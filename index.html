@@ -381,6 +381,7 @@ function buildDB(csv) {
   const iYear   = headers.findIndex(h => h === 'year' || h === 'ปี');
   const iYearMon= headers.findIndex(h => h === 'year_month' || h === 'เดือน');
   const iDes    = headers.findIndex(h => h === 'is_design');
+  const iPhoto  = headers.findIndex(h => h === 'is_photo');   // ถ่ายภาพ
   const iVid    = headers.findIndex(h => h === 'is_video');
 
   // init containers
@@ -395,7 +396,7 @@ function buildDB(csv) {
     const status = (row[iStatus] || '').replace(/"/g,'').trim();
     const year   = (row[iYear]   || '').replace(/"/g,'').trim();
     const ym     = (row[iYearMon]|| '').replace(/"/g,'').trim();
-    const isDesign = parseInt(row[iDes] || 0);
+    const isDesign = parseInt(row[iDes] || 0) + (iPhoto >= 0 ? parseInt(row[iPhoto] || 0) : 0);
     const isVideo  = parseInt(row[iVid] || 0);
 
     if (!emp || !year || !ym) continue;
