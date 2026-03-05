@@ -227,51 +227,9 @@ canvas{max-height:230px}
   </div>
 </div>
 
-<div class="sl">รายละเอียดรายบุคคล</div>
-
-<!-- Employee detail table -->
-<div class="card" style="margin-bottom:16px">
-  <div class="ch">
-    <div class="ct"><span class="ico">👤</span> งานออกแบบสื่อ & ตัดต่อวิดีโอ แยกตามสถานะ</div>
-    <div class="cb" id="tableLabel"></div>
-  </div>
-  <div style="overflow-x:auto">
-    <table class="emp-table" id="empTable">
-      <thead>
-        <tr>
-          <th>ชื่อ</th>
-          <th>🎨 ออกแบบ<br>ทั้งหมด</th>
-          <th>🎨 ดำเนินการ<br>แล้ว</th>
-          <th>🎨 กำลัง<br>ดำเนินการ</th>
-          <th>🎬 ตัดต่อ<br>ทั้งหมด</th>
-          <th>🎬 ดำเนินการ<br>แล้ว</th>
-          <th>🎬 กำลัง<br>ดำเนินการ</th>
-          <th>รวมทั้งหมด</th>
-        </tr>
-      </thead>
-      <tbody id="empTbody"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Two charts: Design per person + Video per person -->
-<div class="g2">
-  <div class="card">
-    <div class="ch">
-      <div class="ct"><span class="ico">🎨</span> ออกแบบสื่อ รายบุคคล (สถานะ)</div>
-    </div>
-    <canvas id="designChart" style="max-height:220px"></canvas>
-  </div>
-  <div class="card">
-    <div class="ch">
-      <div class="ct"><span class="ico">🎬</span> ตัดต่อวิดีโอ รายบุคคล (สถานะ)</div>
-    </div>
-    <canvas id="videoChart" style="max-height:220px"></canvas>
-  </div>
-</div>
 
 <!-- Job list table -->
-<div class="sl" style="margin-top:2rem">รายชื่องานทั้งหมด</div>
+<div class="sl">รายชื่องานทั้งหมด</div>
 <div class="card" style="margin-bottom:2rem">
   <div class="ch" style="flex-wrap:wrap;gap:.5rem">
     <div class="ct"><span class="ico">📋</span> รายชื่องานแยกตามประเภท & ผู้รับผิดชอบ</div>
@@ -303,6 +261,23 @@ canvas{max-height:230px}
     </table>
   </div>
   <div id="jobCount" style="text-align:right;font-size:12px;color:var(--t3);padding:.5rem 0"></div>
+</div>
+
+
+<!-- Two charts: Design per person + Video per person -->
+<div class="g2">
+  <div class="card">
+    <div class="ch">
+      <div class="ct"><span class="ico">🎨</span> ออกแบบสื่อ รายบุคคล (สถานะ)</div>
+    </div>
+    <canvas id="designChart" style="max-height:220px"></canvas>
+  </div>
+  <div class="card">
+    <div class="ch">
+      <div class="ct"><span class="ico">🎬</span> ตัดต่อวิดีโอ รายบุคคล (สถานะ)</div>
+    </div>
+    <canvas id="videoChart" style="max-height:220px"></canvas>
+  </div>
 </div>
 
 </div><!-- /wrap -->
@@ -600,26 +575,6 @@ function update() {
 
   const pLabel = state.period === 'ทั้งหมด' ? (state.periodType==='year'?'ทุกปี':'ทุกเดือน') : state.period;
   document.getElementById('chartPeriodLabel').textContent = pLabel;
-  document.getElementById('tableLabel').textContent = pLabel;
-
-  const tbody = document.getElementById('empTbody');
-  tbody.innerHTML = '';
-  const sorted = [...empData].sort((a,b)=>(b.design+b.photo+b.video)-(a.design+a.photo+a.video));
-  sorted.forEach(e=>{
-    const tot = (state.showDesign?e.design:0)+(state.showPhoto?e.photo||0:0)+(state.showVideo?e.video:0);
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${e.name}</td>
-      <td style="text-align:center">${state.showDesign?badgeHtml(e.design,'design'):'<span style="color:var(--t3)">—</span>'}</td>
-      <td style="text-align:center">${state.showDesign?badgeHtml(e.dd,'done'):'<span style="color:var(--t3)">—</span>'}</td>
-      <td style="text-align:center">${state.showDesign?badgeHtml(e.di,'inp'):'<span style="color:var(--t3)">—</span>'}</td>
-      <td style="text-align:center">${state.showVideo?badgeHtml(e.video,'video'):'<span style="color:var(--t3)">—</span>'}</td>
-      <td style="text-align:center">${state.showVideo?badgeHtml(e.vd,'done'):'<span style="color:var(--t3)">—</span>'}</td>
-      <td style="text-align:center">${state.showVideo?badgeHtml(e.vi,'inp'):'<span style="color:var(--t3)">—</span>'}</td>
-      <td style="text-align:center"><strong style="color:var(--t1)">${tot}</strong></td>
-    `;
-    tbody.appendChild(tr);
-  });
 
   const rankDiv = document.getElementById('rankBars');
   rankDiv.innerHTML = '';
