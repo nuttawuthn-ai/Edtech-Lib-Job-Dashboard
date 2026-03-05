@@ -376,22 +376,9 @@ function parseCSVLine(line) {
 }
 
 function buildDB(csv) {
-  // parse CSV รองรับ newline ใน quoted fields
-  const lines = [];
-  let cur = '', inQ = false;
-  for (let i = 0; i < csv.length; i++) {
-    const ch = csv[i];
-    if (ch === '"') {
-      if (inQ && csv[i+1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (ch === '\n' && !inQ) {
-      if (cur.trim()) lines.push(cur);
-      cur = '';
-    } else {
-      cur += ch;
-    }
-  }
-  if (cur.trim()) lines.push(cur);
+  // normalize line endings แล้ว split — Apps Script ส่ง \r\n หรือ \n
+  const lines = csv.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+                   .split('\n').filter(l => l.trim());
   const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/"/g,'').trim());
   console.log('[DB] headers:', headers);
 
