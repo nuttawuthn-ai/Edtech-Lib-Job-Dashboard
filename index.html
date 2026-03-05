@@ -638,23 +638,34 @@ function update() {
     options:{ responsive:true, plugins:{ legend:{ labels:{font:{size:10},padding:10,color:'#8a9bc4'} } }, scales:{ x:{ stacked:true, grid:{color:'rgba(255,255,255,.03)'}, ticks:{color:'#4a5980',font:{size:10}} }, y:{ stacked:true, grid:{color:'rgba(255,255,255,.04)'}, ticks:{color:'#4a5980'}, beginAtZero:true } } }
   });
 
-  const actEmps = sorted.filter(e=>e.design>0||e.video>0);
-  const names = actEmps.map(e=>e.name);
+  // chart ออกแบบสื่อ + ถ่ายภาพ รวมกัน (dd+pd = done, di+pi = inprogress)
+  const actEmps = sorted.filter(e=>(e.design+(e.photo||0))>0 || e.video>0);
+  const names   = actEmps.map(e=>e.name);
+  const chartOpts = (axis) => ({
+    responsive:true,
+    plugins:{legend:{labels:{font:{size:10},padding:8,color:'#8a9bc4'}}},
+    scales:{
+      x:{stacked:true,grid:{color:'rgba(255,255,255,.02)'},ticks:{color:'#8a9bc4'}},
+      y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5980'},beginAtZero:true}
+    }
+  });
+
   if(designChartInst) designChartInst.destroy();
   designChartInst = new Chart(document.getElementById('designChart'),{
     type:'bar', data:{ labels:names, datasets:[
-      {label:'ดำเนินการแล้ว',data:actEmps.map(e=>e.dd),backgroundColor:'rgba(79,247,200,0.7)',borderRadius:5,stack:'d'},
-      {label:'กำลังดำเนินการ',data:actEmps.map(e=>e.di),backgroundColor:'rgba(247,192,79,0.65)',borderRadius:5,stack:'d'}
+      {label:'ดำเนินการแล้ว', data:actEmps.map(e=>e.dd+(e.pd||0)), backgroundColor:'rgba(79,247,200,0.7)',  borderRadius:5, stack:'d'},
+      {label:'กำลังดำเนินการ',data:actEmps.map(e=>e.di+(e.pi||0)), backgroundColor:'rgba(247,192,79,0.65)', borderRadius:5, stack:'d'}
     ]},
-    options:{ responsive:true, plugins:{legend:{labels:{font:{size:10},padding:8,color:'#8a9bc4'}}}, scales:{ x:{stacked:true,grid:{color:'rgba(255,255,255,.02)'},ticks:{color:'#8a9bc4'}}, y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5980'},beginAtZero:true} } }
+    options: chartOpts('d')
   });
+
   if(videoChartInst) videoChartInst.destroy();
   videoChartInst = new Chart(document.getElementById('videoChart'),{
     type:'bar', data:{ labels:names, datasets:[
-      {label:'ดำเนินการแล้ว',data:actEmps.map(e=>e.vd),backgroundColor:'rgba(247,79,142,0.7)',borderRadius:5,stack:'v'},
-      {label:'กำลังดำเนินการ',data:actEmps.map(e=>e.vi),backgroundColor:'rgba(247,192,79,0.65)',borderRadius:5,stack:'v'}
+      {label:'ดำเนินการแล้ว', data:actEmps.map(e=>e.vd), backgroundColor:'rgba(247,79,142,0.7)',  borderRadius:5, stack:'v'},
+      {label:'กำลังดำเนินการ',data:actEmps.map(e=>e.vi), backgroundColor:'rgba(247,192,79,0.65)', borderRadius:5, stack:'v'}
     ]},
-    options:{ responsive:true, plugins:{legend:{labels:{font:{size:10},padding:8,color:'#8a9bc4'}}}, scales:{ x:{stacked:true,grid:{color:'rgba(255,255,255,.02)'},ticks:{color:'#8a9bc4'}}, y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#4a5980'},beginAtZero:true} } }
+    options: chartOpts('v')
   });
 }
 
