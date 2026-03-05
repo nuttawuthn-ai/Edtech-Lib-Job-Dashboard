@@ -637,25 +637,33 @@ function buildPeriodSel() {
   const allOpt = document.createElement('option');
   allOpt.value = 'ทั้งหมด'; allOpt.textContent = '— ทั้งหมด —';
   sel.appendChild(allOpt);
+  const thm = {1:'มกราคม',2:'กุมภาพันธ์',3:'มีนาคม',4:'เมษายน',5:'พฤษภาคม',6:'มิถุนายน',
+              7:'กรกฎาคม',8:'สิงหาคม',9:'กันยายน',10:'ตุลาคม',11:'พฤศจิกายน',12:'ธันวาคม'};
+
   if (state.periodType === 'year') {
-    DB.years.forEach(y => {
+    // เรียงจากปีล่าสุด → เก่าสุด
+    [...DB.years].sort((a,b) => Number(b) - Number(a)).forEach(y => {
       const o = document.createElement('option');
-      o.value = y; o.textContent = 'ปี ' + y;
+      o.value = y; o.textContent = 'ปี ' + (Number(y) + 543) + ' (' + y + ')';
       sel.appendChild(o);
     });
   } else {
-    const years = [...new Set(DB.months.map(m=>m.split('-')[0]))];
+    // เรียงปีจากล่าสุด → เก่าสุด
+    const years = [...new Set(DB.months.map(m=>m.split('-')[0]))]
+                  .sort((a,b) => Number(b) - Number(a));
     years.forEach(y => {
       const og = document.createElement('optgroup');
-      og.label = 'ปี ' + y;
-      DB.months.filter(m=>m.startsWith(y)).forEach(m => {
-        const o = document.createElement('option');
-        o.value = m;
-        const parts = m.split('-');
-        const thm={1:'มกราคม',2:'กุมภาพันธ์',3:'มีนาคม',4:'เมษายน',5:'พฤษภาคม',6:'มิถุนายน',7:'กรกฎาคม',8:'สิงหาคม',9:'กันยายน',10:'ตุลาคม',11:'พฤศจิกายน',12:'ธันวาคม'};
-        o.textContent = thm[parseInt(parts[1])] + ' ' + parts[0];
-        og.appendChild(o);
-      });
+      og.label = 'ปี ' + (Number(y) + 543) + ' (' + y + ')';
+      // เรียงเดือนจากล่าสุด → เก่าสุด
+      [...DB.months].filter(m=>m.startsWith(y))
+        .sort((a,b) => b.localeCompare(a))
+        .forEach(m => {
+          const o = document.createElement('option');
+          o.value = m;
+          const parts = m.split('-');
+          o.textContent = thm[parseInt(parts[1])] + ' ' + (Number(parts[0]) + 543);
+          og.appendChild(o);
+        });
       sel.appendChild(og);
     });
   }
