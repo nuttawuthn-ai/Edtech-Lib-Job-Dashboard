@@ -301,20 +301,43 @@ Chart.defaults.font.size = 11;
 function loadData() {
   showLoading(true);
   // ใช้ corsproxy.io เพื่อหลีกเลี่ยง CORS
-  const TARGET = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+  var TARGET = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
     '/gviz/tq?tqx=out:json&gid=' + SHEET_GID +
     '&sheet=' + encodeURIComponent(SHEET_NAME);
-  const url = 'https://corsproxy.io/?' + encodeURIComponent(TARGET);
+  // ใช้ allorigins.win — รับ URL ยาวได้ ส่งกลับเป็น {contents: "..."}
+  var url = 'https://api.allorigins.win/get?url=' + encodeURIComponent(TARGET);
 
   fetch(url)
-    .then(function(r) { return r.text(); })
-    .then(function(text) {
-      // Google ส่งมาในรูป: /*O_o*/ google.visualization.Query.setResponse({...});
-      // ต้อง strip prefix/suffix ออกก่อน JSON.parse
-      var start = text.indexOf('(');
-      var end   = text.lastIndexOf(')');
-      if (start === -1 || end === -1) throw new Error('รูปแบบข้อมูลไม่ถูกต้อง');
-      var response = JSON.parse(text.slice(start + 1, end));
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var text = data.contents || '';
+      // Google ส่งมาหลายรูปแบบ:
+      // 1. /*O_o*/ google.visualization.Query.setResponse({...});
+      // 2. _gvizCallback({...})
+      // 3. JSON ล้วน {...}
+      // ลอง parse ทีละแบบ
+      var response = null;
+      var cleaned = text.trim();
+
+      // แบบ 1+2: หา { แรกและ } สุดท้าย
+      var start = cleaned.indexOf('{');
+      var end   = cleaned.lastIndexOf('}');
+      if (start !== -1 && end !== -1 && end > start) {
+        try {
+          response = JSON.parse(cleaned.slice(start, end + 1));
+        } catch(e) { response = null; }
+      }
+
+      // แบบ 3: ลอง parse ตรงๆ
+      if (!response) {
+        try { response = JSON.parse(cleaned); } catch(e) { response = null; }
+      }
+
+      if (!response) {
+        // log ให้ debug ง่าย
+        console.error('Raw response (first 300):', cleaned.substring(0, 300));
+        throw new Error('parse ไม่ได้ — ดู Console สำหรับรายละเอียด');
+      }
       handleGvizResponse(response);
     })
     .catch(function(err) {
