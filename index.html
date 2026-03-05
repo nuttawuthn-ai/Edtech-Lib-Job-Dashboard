@@ -373,18 +373,19 @@ function parseCSVLine(line) {
 function buildDB(csv) {
   const lines = csv.split('\n').filter(l => l.trim());
   const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/"/g,'').trim());
+  console.log('[DB] headers:', headers);
 
-  // หา index ของ columns
-  const iEmp    = headers.findIndex(h => h === 'employee' || h === 'พนักงาน' || h === 'ชื่อ');
-  const iType   = headers.findIndex(h => h === 'task_type' || h === 'is_design' || h === 'ประเภท');
-  const iStatus = headers.findIndex(h => h === 'status' || h === 'สถานะ');
-  const iYear   = headers.findIndex(h => h === 'year' || h === 'ปี');
-  const iYearMon= headers.findIndex(h => h === 'year_month' || h === 'เดือน');
-  const iDes    = headers.findIndex(h => h === 'is_design');
-  const iPhoto  = headers.findIndex(h => h === 'is_photo');   // ถ่ายภาพ
-  const iVid    = headers.findIndex(h => h === 'is_video');
+  // หา index — ใช้ includes() เผื่อมี whitespace
+  const iEmp       = headers.findIndex(h => h.includes('employee'));
+  const iStatus    = headers.findIndex(h => h.includes('status'));
+  const iYear      = headers.findIndex(h => h === 'year');
+  const iYearMon   = headers.findIndex(h => h.includes('year_month'));
+  const iTaskLabel = headers.findIndex(h => h.includes('task_label'));
+  const iDes       = headers.findIndex(h => h === 'is_design');
+  const iPhoto     = headers.findIndex(h => h === 'is_photo');
+  const iVid       = headers.findIndex(h => h === 'is_video');
+  console.log('[DB] idx emp:',iEmp,'status:',iStatus,'year:',iYear,'ym:',iYearMon,'task:',iTaskLabel,'des:',iDes,'photo:',iPhoto,'vid:',iVid);
 
-  // init containers
   const emp_year = {}, emp_month = {}, monthly_totals = {};
   const yearSet = new Set(), monthSet = new Set(), empSet = new Set();
 
@@ -396,10 +397,15 @@ function buildDB(csv) {
     const status = (row[iStatus] || '').replace(/"/g,'').trim();
     const year   = (row[iYear]   || '').replace(/"/g,'').trim();
     const ym     = (row[iYearMon]|| '').replace(/"/g,'').trim();
-    const isDesign = parseInt(row[iDes] || 0) + (iPhoto >= 0 ? parseInt(row[iPhoto] || 0) : 0);
-    const isVideo  = parseInt(row[iVid] || 0);
 
     if (!emp || !year || !ym) continue;
+
+    // นับ is_photo รวมใน design + fallback จาก task_label
+    const taskLabel = iTaskLabel >= 0 ? (row[iTaskLabel]||'').replace(/"/g,'').trim() : '';
+    const desVal    = parseInt(row[iDes]  || 0);
+    const photoVal  = iPhoto >= 0 ? parseInt(row[iPhoto] || 0) : (taskLabel === 'ถ่ายภาพ' ? 1 : 0);
+    const isDesign  = desVal + photoVal;
+    const isVideo   = parseInt(row[iVid]  || 0);
 
     empSet.add(emp);
     yearSet.add(year);
@@ -433,13 +439,12 @@ function buildDB(csv) {
     if (isInp)  { mt.design_inprogress += isDesign; mt.video_inprogress += isVideo; }
   }
 
-  const years   = [...yearSet].sort((a, b) => Number(a) - Number(b));  // sort เป็น Number
-  const months  = [...monthSet].sort();  // YYYY-MM format — text sort ถูกต้องอยู่แล้ว
+  const years   = [...yearSet].sort((a,b) => Number(a) - Number(b));
+  const months  = [...monthSet].sort();
   const employees = [...empSet];
 
-  // fill missing months/years per employee
   employees.forEach(e => {
-    years.forEach(y => { if (!emp_year[e][y]) emp_year[e][y] = { design:0,video:0,done:0,inprogress:0,design_done:0,design_inprogress:0,video_done:0,video_inprogress:0 }; });
+    years.forEach(y  => { if (!emp_year[e][y]) emp_year[e][y] = { design:0,video:0,done:0,inprogress:0,design_done:0,design_inprogress:0,video_done:0,video_inprogress:0 }; });
     months.forEach(m => { if (!emp_month[e]) emp_month[e] = {}; if (!emp_month[e][m]) emp_month[e][m] = { design:0,video:0,design_done:0,design_inprogress:0,video_done:0,video_inprogress:0 }; });
   });
   months.forEach(m => { if (!monthly_totals[m]) monthly_totals[m] = { design_done:0,design_inprogress:0,video_done:0,video_inprogress:0 }; });
@@ -447,9 +452,6 @@ function buildDB(csv) {
   return { years, months, employees, emp_year, emp_month, monthly_totals };
 }
 
-// ============================================================
-// LOADING / ERROR UI
-// ============================================================
 function showLoading(show) {
   document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
 }
