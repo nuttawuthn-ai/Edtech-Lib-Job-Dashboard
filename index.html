@@ -302,102 +302,54 @@ function loadData() {
   showLoading(true);
   // ใช้ corsproxy.io เพื่อหลีกเลี่ยง CORS
   var TARGET = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-    '/gviz/tq?tqx=out:json&gid=' + SHEET_GID +
+    '/gviz/tq?tqx=out:csv&gid=' + SHEET_GID +
     '&sheet=' + encodeURIComponent(SHEET_NAME);
-  // ใช้ allorigins.win — รับ URL ยาวได้ ส่งกลับเป็น {contents: "..."}
-  var url = 'https://api.allorigins.win/get?url=' + encodeURIComponent(TARGET);
+  // ใช้ csv format + proxy หลายตัวเผื่อตัวไหนล่ม
+  var PROXIES = [
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://thingproxy.freeboard.io/fetch/',
+    'https://api.allorigins.win/raw?url='
+  ];
+  var proxyIdx = 0;
 
-  fetch(url)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var text = data.contents || '';
-      // Google ส่งมาหลายรูปแบบ:
-      // 1. /*O_o*/ google.visualization.Query.setResponse({...});
-      // 2. _gvizCallback({...})
-      // 3. JSON ล้วน {...}
-      // ลอง parse ทีละแบบ
-      var response = null;
-      var cleaned = text.trim();
-
-      // แบบ 1+2: หา { แรกและ } สุดท้าย
-      var start = cleaned.indexOf('{');
-      var end   = cleaned.lastIndexOf('}');
-      if (start !== -1 && end !== -1 && end > start) {
-        try {
-          response = JSON.parse(cleaned.slice(start, end + 1));
-        } catch(e) { response = null; }
-      }
-
-      // แบบ 3: ลอง parse ตรงๆ
-      if (!response) {
-        try { response = JSON.parse(cleaned); } catch(e) { response = null; }
-      }
-
-      if (!response) {
-        // log ให้ debug ง่าย
-        console.error('Raw response (first 300):', cleaned.substring(0, 300));
-        throw new Error('parse ไม่ได้ — ดู Console สำหรับรายละเอียด');
-      }
-      handleGvizResponse(response);
-    })
-    .catch(function(err) {
+  function tryFetch() {
+    if (proxyIdx >= PROXIES.length) {
       showLoading(false);
-      showError('โหลดข้อมูลไม่ได้: ' + err.message);
-    });
-}
-
-function handleGvizResponse(response) {
-  try {
-    var table = response.table || response;
-    var rows  = table.rows || [];
-    var cols  = (table.cols || []).map(function(c) {
-      return (c.label || c.id || '').toLowerCase().trim();
-    });
-
-    // แปลง Google Visualization JSON → CSV แล้วส่งให้ buildDB เดิม
-    var header = cols.join(',');
-    var lines  = rows.map(function(r) {
-      return (r.c || []).map(function(cell) {
-        if (!cell || cell.v === null || cell.v === undefined) return '""';
-        var v = cell.v;
-        // Google Date format: Date(yyyy,m,d)
-        if (typeof v === 'string' && v.indexOf('Date(') === 0) {
-          var parts = v.replace('Date(','').replace(')','').split(',');
-          var yr = parts[0];
-          var mo = String(parseInt(parts[1]) + 1).padStart(2, '0');
-          var dy = String(parseInt(parts[2])).padStart(2, '0');
-          v = yr + '-' + mo + '-' + dy;
-        }
-        return '"' + String(v).replace(/"/g, '""') + '"';
-      }).join(',');
-    });
-
-    var csv = [header].concat(lines).join('\n');
-    DB = buildDB(csv);
-    showLoading(false);
-    buildPeriodSel();
-    update();
-
-    // อัปเดตตัวนับรายการ
-    var total = DB.employees.reduce(function(s, e) {
-      return s + DB.years.reduce(function(ss, y) {
-        var d = (DB.emp_year[e] || {})[y] || {};
-        return ss + (d.design || 0) + (d.video || 0);
-      }, 0);
-    }, 0);
-    document.getElementById('totalCount').textContent = total.toLocaleString();
-
-    // อัปเดตวันที่
-    var now = new Date();
-    var thMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
-                    'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-    document.getElementById('dataDate').textContent =
-      thMonths[now.getMonth() + 1] + ' ' + (now.getFullYear() + 543);
-
-  } catch(err) {
-    showLoading(false);
-    showError(err.message);
+      showError('โหลดข้อมูลไม่ได้ — proxy ทุกตัวล่ม กรุณาลองใหม่ภายหลัง');
+      return;
+    }
+    var url = PROXIES[proxyIdx] + encodeURIComponent(TARGET);
+    fetch(url)
+      .then(function(r) {
+        if (!r.ok) throw new Error('status ' + r.status);
+        return r.text();
+      })
+      .then(function(text) {
+        if (!text || text.trim().startsWith('<')) throw new Error('ได้ HTML แทน CSV');
+        DB = buildDB(text);
+        showLoading(false);
+        buildPeriodSel();
+        update();
+        var total = DB.employees.reduce(function(s,e) {
+          return s + DB.years.reduce(function(ss,y) {
+            var d = (DB.emp_year[e]||{})[y]||{};
+            return ss + (d.design||0) + (d.video||0);
+          }, 0);
+        }, 0);
+        document.getElementById('totalCount').textContent = total.toLocaleString();
+        var now = new Date();
+        var thMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                        'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+        document.getElementById('dataDate').textContent =
+          thMonths[now.getMonth()+1] + ' ' + (now.getFullYear()+543);
+      })
+      .catch(function(err) {
+        console.warn('Proxy ' + proxyIdx + ' failed:', err.message);
+        proxyIdx++;
+        tryFetch();
+      });
   }
+  tryFetch();
 }
 
 function parseCSVLine(line) {
