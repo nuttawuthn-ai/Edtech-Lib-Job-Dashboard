@@ -295,7 +295,7 @@ Chart.defaults.font.size = 11;
 // ใช้แทน fetch เพื่อหลีกเลี่ยง CORS บน GitHub Pages / iframe
 // Google Visualization API ส่งข้อมูลในรูปแบบ:
 // _gvizCallback({"version":"0.6","reqId":"0","status":"ok","table":{...}})
-window._gvizCallback = function(response) { ... } {
+window.google.visualization.Query.setResponse = function(response) { ... } {
   // รองรับทั้ง 2 format ที่ Google อาจส่งมา
   const data = response.table ? response : (response.version ? response : {table: response});
   try {
