@@ -208,7 +208,7 @@ canvas{max-height:230px}
   <div class="kpi k4"><div class="kpi-ico">⏳</div><div class="kpi-n" id="k-inp">0</div><div class="kpi-l">อยู่ระหว่างดำเนินการ</div><div class="kpi-s" id="k-inp-s"></div></div>
 </div>
 
-<div class="sl">แนวโน้มรายเดือน & ภาระงานรายบุคคล</div>
+<div class="sl">แนวโน้มตามเวลา & สรุปสถานะ</div>
 
 <!-- Timeline + Rank -->
 <div class="g3" style="margin-bottom:16px">
@@ -221,9 +221,26 @@ canvas{max-height:230px}
   </div>
   <div class="card">
     <div class="ch">
-      <div class="ct"><span class="ico">🏅</span> สัดส่วนรายบุคคล</div>
+      <div class="ct"><span class="ico">📊</span> สรุปสถานะงาน</div>
     </div>
-    <div class="rank-bars" id="rankBars"></div>
+    <div id="statusSummary" style="display:flex;flex-direction:column;gap:12px;padding:8px 0"></div>
+  </div>
+</div>
+
+
+<!-- Two charts: Design per person + Video per person -->
+<div class="g2">
+  <div class="card">
+    <div class="ch">
+      <div class="ct"><span class="ico">🎨</span> ออกแบบสื่อ รายบุคคล (สถานะ)</div>
+    </div>
+    <canvas id="designChart" style="max-height:220px"></canvas>
+  </div>
+  <div class="card">
+    <div class="ch">
+      <div class="ct"><span class="ico">🎬</span> ตัดต่อวิดีโอ รายบุคคล (สถานะ)</div>
+    </div>
+    <canvas id="videoChart" style="max-height:220px"></canvas>
   </div>
 </div>
 
@@ -252,31 +269,21 @@ canvas{max-height:230px}
         <tr>
           <th style="min-width:180px">ชื่องาน</th>
           <th>ประเภท</th>
+          <th>เจ้าของงาน</th>
           <th>ผู้รับผิดชอบ</th>
           <th>สถานะ</th>
-          <th>ช่วงเวลา</th>
         </tr>
       </thead>
       <tbody id="jobTbody"></tbody>
     </table>
   </div>
-  <div id="jobCount" style="text-align:right;font-size:12px;color:var(--t3);padding:.5rem 0"></div>
-</div>
-
-
-<!-- Two charts: Design per person + Video per person -->
-<div class="g2">
-  <div class="card">
-    <div class="ch">
-      <div class="ct"><span class="ico">🎨</span> ออกแบบสื่อ รายบุคคล (สถานะ)</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;flex-wrap:wrap;gap:.5rem">
+    <div id="jobCount" style="font-size:12px;color:var(--t3)"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="jobPagePrev" onclick="jobChangePage(-1)" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:3px 12px;cursor:pointer">◀</button>
+      <span style="color:var(--t2);font-size:13px">หน้า <span id="jobPageNum">1</span></span>
+      <button id="jobPageNext" onclick="jobChangePage(1)"  style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:3px 12px;cursor:pointer">▶</button>
     </div>
-    <canvas id="designChart" style="max-height:220px"></canvas>
-  </div>
-  <div class="card">
-    <div class="ch">
-      <div class="ct"><span class="ico">🎬</span> ตัดต่อวิดีโอ รายบุคคล (สถานะ)</div>
-    </div>
-    <canvas id="videoChart" style="max-height:220px"></canvas>
   </div>
 </div>
 
@@ -407,7 +414,8 @@ function buildDB(csv) {
     // task label + raw row สำหรับตารางรายชื่องาน
     const taskLabel = iTaskLabel >= 0 ? (row[iTaskLabel]||'').replace(/"/g,'').trim() : '';
     const jobName   = iJobName   >= 0 ? (row[iJobName]  ||'').replace(/"/g,'').trim() : '';
-    rawRows.push({ jobName, taskLabel, emp, status, ym });
+    const owner = iOwner >= 0 ? (row[iOwner]||'').replace(/"/g,'').trim() : '';
+    rawRows.push({ jobName, taskLabel, owner, emp, status, ym });
 
     const desVal    = parseInt(row[iDes]  || 0);
     const photoVal  = iPhoto >= 0 ? parseInt(row[iPhoto] || 0) : (taskLabel === 'ถ่ายภาพ' ? 1 : 0);
@@ -578,28 +586,40 @@ function update() {
 
   const sorted = [...empData].sort((a,b)=>(b.design+(b.photo||0)+b.video)-(a.design+(a.photo||0)+a.video));
 
-  const rankDiv = document.getElementById('rankBars');
-  rankDiv.innerHTML = '';
-  const maxVal = Math.max(...sorted.map(e=>e.design+(e.photo||0)+e.video), 1);
-  sorted.forEach(e=>{
-    const total = e.design+(e.photo||0)+e.video;
-    if(total===0) return;
-    const dPct = (e.design/maxVal*100).toFixed(1);
-    const pPct = ((e.photo||0)/maxVal*100).toFixed(1);
-    const vPct = (e.video/maxVal*100).toFixed(1);
-    const div = document.createElement('div');
-    div.className='rb-row';
-    div.innerHTML = `
-      <div class="rb-name">${e.name}</div>
-      <div class="rb-track">
-        ${state.showDesign&&e.design>0?`<div class="rb-seg design" style="width:${dPct}%"><span style="color:#fff;font-size:9px;padding:0 3px">${e.design}</span></div>`:''}
-        ${state.showPhoto&&(e.photo||0)>0?`<div class="rb-seg photo" style="width:${pPct}%;background:#4FC3F7"><span style="color:#000;font-size:9px;padding:0 3px">${e.photo}</span></div>`:''}
-        ${state.showVideo&&e.video>0?`<div class="rb-seg video" style="width:${vPct}%"><span style="color:#fff;font-size:9px;padding:0 3px">${e.video}</span></div>`:''}
-      </div>
-      <div class="rb-total">${total}</div>
-    `;
-    rankDiv.appendChild(div);
-  });
+  // สรุปสถานะงาน
+  const statusDiv = document.getElementById('statusSummary');
+  if (statusDiv) {
+    const allRows = DB.rawRows.filter(r => {
+      const keys = getKeys();
+      if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+      if (state.showDesign && r.taskLabel === 'ออกแบบสื่อประชาสัมพันธ์') return true;
+      if (state.showPhoto  && r.taskLabel === 'ถ่ายภาพ') return true;
+      if (state.showVideo  && r.taskLabel === 'ตัดต่อวิดีโอ') return true;
+      return false;
+    });
+    const cntDone    = allRows.filter(r => r.status === STATUS_DONE).length;
+    const cntInp     = allRows.filter(r => r.status === STATUS_INP).length;
+    const cntCancel  = allRows.filter(r => r.status === STATUS_CANCEL).length;
+    const total      = allRows.length;
+    const pctDone    = total ? Math.round(cntDone/total*100)   : 0;
+    const pctInp     = total ? Math.round(cntInp/total*100)    : 0;
+    const pctCancel  = total ? Math.round(cntCancel/total*100) : 0;
+    statusDiv.innerHTML = [
+      { label:'ดำเนินการแล้ว',          cnt:cntDone,   pct:pctDone,   color:'#4FF7C8', bg:'rgba(79,247,200,.12)' },
+      { label:'อยู่ระหว่างดำเนินการ',   cnt:cntInp,    pct:pctInp,    color:'#F7C04F', bg:'rgba(247,192,79,.12)' },
+      { label:'ยกเลิก',                  cnt:cntCancel, pct:pctCancel, color:'#F74F4F', bg:'rgba(247,79,79,.12)'  },
+    ].map(s => `
+      <div style="background:${s.bg};border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+        <span style="color:${s.color};font-weight:600">${s.label}</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="background:var(--bg2);border-radius:4px;height:8px;width:100px;overflow:hidden">
+            <div style="background:${s.color};height:100%;width:${s.pct}%;transition:width .4s"></div>
+          </div>
+          <span style="color:${s.color};font-weight:700;min-width:28px;text-align:right">${s.cnt}</span>
+          <span style="color:var(--t3);font-size:11px;min-width:32px">${s.pct}%</span>
+        </div>
+      </div>`).join('');
+  }
 
   const tl = getTimelineData();
   const datasets = [];
@@ -716,6 +736,16 @@ loadData();
 // ============================================================
 // JOB TABLE
 // ============================================================
+var jobCurrentPage = 1;
+
+function jobChangePage(dir) {
+  const pageNum = document.getElementById('jobPageNum');
+  const current = parseInt(pageNum?.textContent || '1');
+  jobCurrentPage = Math.max(1, current + dir);
+  pageNum.textContent = jobCurrentPage;
+  renderJobTable();
+}
+
 function buildJobTable() {
   if (!DB) return;
 
@@ -757,25 +787,39 @@ function renderJobTable() {
     'ยกเลิก':         'color:#F74F4F'
   };
 
+  // pagination
+  const PAGE_SIZE = 10;
+  const jobPage   = jobCurrentPage || 1;
+  const totalRows = rows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const pageRows  = rows.slice((jobPage-1)*PAGE_SIZE, jobPage*PAGE_SIZE);
+
   const tbody = document.getElementById('jobTbody');
-  tbody.innerHTML = rows.slice(0, 500).map(r => `
+  tbody.innerHTML = pageRows.map(r => `
     <tr>
       <td>${r.jobName || '—'}</td>
       <td style="white-space:nowrap">${taskIcon[r.taskLabel]||''} ${r.taskLabel}</td>
+      <td>${r.owner || '—'}</td>
       <td>${r.emp}</td>
       <td style="${statusColor[r.status]||''};white-space:nowrap">${r.status}</td>
-      <td style="white-space:nowrap">${r.ym}</td>
     </tr>`).join('');
 
-  document.getElementById('jobCount').textContent =
-    `แสดง ${Math.min(rows.length,500)} จาก ${rows.length} รายการ`;
+  // อัปเดต pagination controls
+  const pageNum = document.getElementById('jobPageNum');
+  const pagePrev = document.getElementById('jobPagePrev');
+  const pageNext = document.getElementById('jobPageNext');
+  const jobCountEl = document.getElementById('jobCount');
+  if (pageNum)   pageNum.textContent   = jobPage;
+  if (pagePrev)  pagePrev.disabled     = jobPage <= 1;
+  if (pageNext)  pageNext.disabled     = jobPage >= totalPages;
+  if (jobCountEl) jobCountEl.textContent = `หน้า ${jobPage}/${totalPages} · แสดง ${pageRows.length} จาก ${totalRows} รายการ`;
 }
 
 // event listeners สำหรับ job table filters
 document.addEventListener('DOMContentLoaded', function() {
   ['jobTypeFilter','jobEmpFilter','jobSearch'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.addEventListener(id === 'jobSearch' ? 'input' : 'change', renderJobTable);
+    if (el) el.addEventListener(id === 'jobSearch' ? 'input' : 'change', () => { jobCurrentPage = 1; renderJobTable(); });
   });
 });
 
