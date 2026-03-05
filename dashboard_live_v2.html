@@ -292,14 +292,29 @@ Chart.defaults.font.size = 11;
 // ============================================================
 // FETCH & BUILD DB จาก Google Sheets CSV
 // ============================================================
-async function loadData() {
-  showLoading(true);
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${SHEET_GID}&sheet=${encodeURIComponent(SHEET_NAME)}`;
-  
+// JSONP callback สำหรับรับข้อมูลจาก Google Sheets
+// ใช้แทน fetch เพื่อหลีกเลี่ยง CORS บน GitHub Pages / iframe
+function _gvizCallback(data) {
   try {
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('fetch failed: ' + resp.status);
-    const csv = await resp.text();
+    const rows  = data.table.rows;
+    const cols  = data.table.cols.map(c => c.label.toLowerCase().trim());
+    // แปลง JSON → CSV format แล้วส่งให้ buildDB เดิม
+    const header = cols.join(',');
+    const lines  = rows.map(r =>
+      r.c.map(cell => {
+        if (!cell || cell.v === null || cell.v === undefined) return '""';
+        let v = cell.v;
+        // Google Visualization Date format: Date(yyyy,m,d)
+        if (typeof v === 'string' && v.startsWith('Date(')) {
+          const parts = v.replace('Date(','').replace(')','').split(',');
+          const yr = parts[0], mo = String(parseInt(parts[1])+1).padStart(2,'0'), dy = String(parts[2]).padStart(2,'0');
+          v = yr + '-' + mo + '-' + dy;
+        }
+        return '"' + String(v).replace(/"/g,'""') + '"';
+      }).join(',')
+    );
+    const csv = [header, ...lines].join('
+');
     DB = buildDB(csv);
     showLoading(false);
     buildPeriodSel();
@@ -320,6 +335,19 @@ async function loadData() {
     showLoading(false);
     showError(err.message);
   }
+}
+
+// loadData — ใช้ JSONP แทน fetch เพื่อหลีกเลี่ยง CORS
+function loadData() {
+  showLoading(true);
+  const old = document.getElementById('_gvizScript');
+  if (old) old.remove();
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&callback=_gvizCallback&gid=${SHEET_GID}&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  const s = document.createElement('script');
+  s.id = '_gvizScript';
+  s.src = url;
+  s.onerror = () => { showLoading(false); showError('โหลดข้อมูลไม่ได้ — ตรวจสอบว่า Sheet เป็น public'); };
+  document.head.appendChild(s);
 }
 
 function parseCSVLine(line) {
