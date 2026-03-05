@@ -270,6 +270,41 @@ canvas{max-height:230px}
   </div>
 </div>
 
+<!-- Job list table -->
+<div class="sl" style="margin-top:2rem">รายชื่องานทั้งหมด</div>
+<div class="card" style="margin-bottom:2rem">
+  <div class="ch" style="flex-wrap:wrap;gap:.5rem">
+    <div class="ct"><span class="ico">📋</span> รายชื่องานแยกตามประเภท & ผู้รับผิดชอบ</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <select id="jobTypeFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
+        <option value="">— ประเภทงาน ทั้งหมด —</option>
+        <option value="ออกแบบสื่อประชาสัมพันธ์">🎨 ออกแบบสื่อประชาสัมพันธ์</option>
+        <option value="ถ่ายภาพ">📷 ถ่ายภาพ</option>
+        <option value="ตัดต่อวิดีโอ">🎬 ตัดต่อวิดีโอ</option>
+      </select>
+      <select id="jobEmpFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
+        <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
+      </select>
+      <input id="jobSearch" placeholder="🔍 ค้นหาชื่องาน..." style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px;min-width:180px">
+    </div>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="emp-table" id="jobTable" style="width:100%">
+      <thead>
+        <tr>
+          <th style="min-width:180px">ชื่องาน</th>
+          <th>ประเภท</th>
+          <th>ผู้รับผิดชอบ</th>
+          <th>สถานะ</th>
+          <th>ช่วงเวลา</th>
+        </tr>
+      </thead>
+      <tbody id="jobTbody"></tbody>
+    </table>
+  </div>
+  <div id="jobCount" style="text-align:right;font-size:12px;color:var(--t3);padding:.5rem 0"></div>
+</div>
+
 </div><!-- /wrap -->
 
 <script>
@@ -319,6 +354,7 @@ function loadData() {
       showLoading(false);
       buildPeriodSel();
       update();
+      buildJobTable();
       // อัปเดตตัวนับ
       var total = DB.employees.reduce(function(s,e) {
         return s + DB.years.reduce(function(ss,y) {
@@ -369,12 +405,15 @@ function buildDB(csv) {
   const iYear      = headers.findIndex(h => h === 'year');
   const iYearMon   = headers.findIndex(h => h.includes('year_month'));
   const iTaskLabel = headers.findIndex(h => h.includes('task_label'));
+  const iJobName   = headers.findIndex(h => h.includes('job_name'));
+  const iOwner     = headers.findIndex(h => h.includes('owner'));
   const iDes       = headers.findIndex(h => h === 'is_design');
   const iPhoto     = headers.findIndex(h => h === 'is_photo');
   const iVid       = headers.findIndex(h => h === 'is_video');
   console.log('[DB] idx emp:',iEmp,'status:',iStatus,'year:',iYear,'ym:',iYearMon,'task:',iTaskLabel,'des:',iDes,'photo:',iPhoto,'vid:',iVid);
 
   const emp_year = {}, emp_month = {}, monthly_totals = {};
+  const rawRows = []; // เก็บ raw data สำหรับตารางรายชื่องาน
   const yearSet = new Set(), monthSet = new Set(), empSet = new Set();
 
   for (let i = 1; i < lines.length; i++) {
@@ -389,7 +428,11 @@ function buildDB(csv) {
     if (!emp || !year || !ym) continue;
 
     // นับ is_photo รวมใน design + fallback จาก task_label
+    // task label + raw row สำหรับตารางรายชื่องาน
     const taskLabel = iTaskLabel >= 0 ? (row[iTaskLabel]||'').replace(/"/g,'').trim() : '';
+    const jobName   = iJobName   >= 0 ? (row[iJobName]  ||'').replace(/"/g,'').trim() : '';
+    rawRows.push({ jobName, taskLabel, emp, status, ym });
+
     const desVal    = parseInt(row[iDes]  || 0);
     const photoVal  = iPhoto >= 0 ? parseInt(row[iPhoto] || 0) : (taskLabel === 'ถ่ายภาพ' ? 1 : 0);
     const isDesign  = desVal;        // ออกแบบสื่อ (ไม่รวมถ่ายภาพ)
@@ -440,7 +483,7 @@ function buildDB(csv) {
   });
   months.forEach(m => { if (!monthly_totals[m]) monthly_totals[m] = { design_done:0,design_inprogress:0,photo_done:0,photo_inprogress:0,video_done:0,video_inprogress:0 }; });
 
-  return { years, months, employees, emp_year, emp_month, monthly_totals };
+  return { years, months, employees, emp_year, emp_month, monthly_totals, rawRows };
 }
 
 function showLoading(show) {
@@ -536,6 +579,7 @@ function getTimelineData() {
 
 function update() {
   if (!DB) return;
+  if (document.getElementById('jobTbody')) renderJobTable();
   const empData = DB.employees.map(e=>({ name:e, ...getEmpData(e) }));
   let totalDesign=0, totalVideo=0, totalDone=0, totalInp=0;
   // รวม done/inprogress ตาม filter ที่เปิดอยู่
@@ -711,5 +755,71 @@ document.getElementById('reloadBtn').addEventListener('click', () => loadData())
 
 // Init
 loadData();
+// ============================================================
+// JOB TABLE
+// ============================================================
+function buildJobTable() {
+  if (!DB) return;
+
+  // populate employee dropdown
+  const empSel = document.getElementById('jobEmpFilter');
+  const prevEmp = empSel.value;
+  empSel.innerHTML = '<option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>';
+  DB.employees.forEach(e => {
+    const o = document.createElement('option');
+    o.value = e; o.textContent = e;
+    empSel.appendChild(o);
+  });
+  empSel.value = prevEmp;
+
+  renderJobTable();
+}
+
+function renderJobTable() {
+  const typeFilter = document.getElementById('jobTypeFilter').value;
+  const empFilter  = document.getElementById('jobEmpFilter').value;
+  const search     = document.getElementById('jobSearch').value.toLowerCase().trim();
+
+  // filter ตาม period ที่เลือกอยู่ด้วย
+  const activeYm = getKeys();
+
+  const rows = DB.rawRows.filter(r => {
+    if (typeFilter && r.taskLabel !== typeFilter) return false;
+    if (empFilter  && r.emp      !== empFilter)  return false;
+    if (search     && !r.jobName.toLowerCase().includes(search)) return false;
+    if (activeYm.length && !activeYm.includes(r.ym) &&
+        !activeYm.some(k => r.ym.startsWith(k))) return false;
+    return true;
+  });
+
+  const taskIcon = { 'ออกแบบสื่อประชาสัมพันธ์':'🎨','ถ่ายภาพ':'📷','ตัดต่อวิดีโอ':'🎬' };
+  const statusColor = {
+    'ดำเนินการแล้ว':  'color:#4FF7C8',
+    'อยู่ระหว่างดำเนินการ': 'color:#F7C04F',
+    'ยกเลิก':         'color:#F74F4F'
+  };
+
+  const tbody = document.getElementById('jobTbody');
+  tbody.innerHTML = rows.slice(0, 500).map(r => `
+    <tr>
+      <td>${r.jobName || '—'}</td>
+      <td style="white-space:nowrap">${taskIcon[r.taskLabel]||''} ${r.taskLabel}</td>
+      <td>${r.emp}</td>
+      <td style="${statusColor[r.status]||''};white-space:nowrap">${r.status}</td>
+      <td style="white-space:nowrap">${r.ym}</td>
+    </tr>`).join('');
+
+  document.getElementById('jobCount').textContent =
+    `แสดง ${Math.min(rows.length,500)} จาก ${rows.length} รายการ`;
+}
+
+// event listeners สำหรับ job table filters
+document.addEventListener('DOMContentLoaded', function() {
+  ['jobTypeFilter','jobEmpFilter','jobSearch'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(id === 'jobSearch' ? 'input' : 'change', renderJobTable);
+  });
+});
+
 </script>
 </body>
