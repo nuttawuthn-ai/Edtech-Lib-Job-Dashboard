@@ -62,13 +62,12 @@ select.period-sel:focus{border-color:var(--a1)}
 .kpi.k1::after{background:linear-gradient(90deg,var(--a1),var(--a2))}
 .kpi.k2::after{background:linear-gradient(90deg,var(--a2),var(--a3))}
 .kpi.k3::after{background:linear-gradient(90deg,var(--done),var(--a1))}
-.kpi.k4::after{background:linear-gradient(90deg,var(--inp),var(--a3))}
+.kpi.k3::after{background:linear-gradient(90deg,#a78bfa,var(--a1))}
 .kpi-ico{font-size:22px;margin-bottom:8px}
 .kpi-n{font-size:32px;font-weight:800;line-height:1}
 .kpi.k1 .kpi-n{color:var(--a1)}
 .kpi.k2 .kpi-n{color:#c4aaff}
-.kpi.k3 .kpi-n{color:var(--done)}
-.kpi.k4 .kpi-n{color:var(--inp)}
+.kpi.k3 .kpi-n{color:#a78bfa}
 .kpi-l{font-size:11px;color:var(--t2);margin-top:4px;font-weight:500}
 .kpi-s{font-size:10px;color:var(--t3);margin-top:6px}
 
@@ -204,8 +203,7 @@ canvas{max-height:230px}
   <div class="kpi k1"><div class="kpi-ico">🎨</div><div class="kpi-n" id="k-design">0</div><div class="kpi-l">ออกแบบสื่อ (ทั้งหมด)</div><div class="kpi-s" id="k-design-s"></div></div>
   <div class="kpi k-photo"><div class="kpi-ico">📷</div><div class="kpi-n" id="k-photo">0</div><div class="kpi-l">ถ่ายภาพ (ทั้งหมด)</div><div class="kpi-s" id="k-photo-s"></div></div>
   <div class="kpi k2"><div class="kpi-ico">🎬</div><div class="kpi-n" id="k-video">0</div><div class="kpi-l">ตัดต่อวิดีโอ (ทั้งหมด)</div><div class="kpi-s" id="k-video-s"></div></div>
-  <div class="kpi k3"><div class="kpi-ico">✅</div><div class="kpi-n" id="k-done">0</div><div class="kpi-l">ดำเนินการแล้ว</div><div class="kpi-s" id="k-done-s"></div></div>
-  <div class="kpi k4"><div class="kpi-ico">⏳</div><div class="kpi-n" id="k-inp">0</div><div class="kpi-l">อยู่ระหว่างดำเนินการ</div><div class="kpi-s" id="k-inp-s"></div></div>
+  <div class="kpi k3"><div class="kpi-ico">📦</div><div class="kpi-n" id="k-total">0</div><div class="kpi-l">ผลงานทั้งหมด</div><div class="kpi-s" id="k-total-s"></div></div>
 </div>
 
 <div class="sl">แนวโน้มตามเวลา & สรุปสถานะ</div>
@@ -579,8 +577,8 @@ function update() {
   setNum('k-design', totalDesign);
   setNum('k-photo', totalPhoto);
   setNum('k-video', totalVideo);
-  setNum('k-done', totalDone);
-  setNum('k-inp', totalInp);
+  const totalAll = totalDesign + totalPhoto + totalVideo;
+  setNum('k-total', totalAll);
 
   const pLabel = state.period === 'ทั้งหมด' ? (state.periodType==='year'?'ทุกปี':'ทุกเดือน') : state.period;
   document.getElementById('chartPeriodLabel').textContent = pLabel;
