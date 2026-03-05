@@ -423,7 +423,8 @@ function buildDB(csv) {
     const emp    = (row[iEmp]    || '').replace(/"/g,'').trim();
     const status = (row[iStatus] || '').replace(/"/g,'').trim();
     const year   = (row[iYear]   || '').replace(/"/g,'').trim();
-    const ym     = (row[iYearMon]|| '').replace(/"/g,'').trim();
+    const ymRaw  = (row[iYearMon]|| '').replace(/"/g,'').trim();
+    const ym     = ymRaw.length >= 7 ? ymRaw.substring(0, 7) : ymRaw; // normalize → YYYY-MM
 
     if (!emp || !year || !ym) continue;
 
