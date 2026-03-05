@@ -47,9 +47,11 @@ select.period-sel:focus{border-color:var(--a1)}
 .task-toggle{display:flex;gap:8px}
 .task-btn{display:flex;align-items:center;gap:6px;border:1.5px solid var(--border);background:transparent;color:var(--t2);font-family:inherit;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .2s}
 .task-btn.active.design{border-color:var(--a2);background:rgba(124,94,247,.12);color:#c4aaff}
+.task-btn.active.photo{border-color:#4FC3F7;background:rgba(79,195,247,.12);color:#4FC3F7}
 .task-btn.active.video{border-color:var(--a3);background:rgba(247,79,142,.12);color:#ffaacc}
 .task-btn .dot{width:8px;height:8px;border-radius:50%}
 .task-btn.design .dot{background:var(--a2)}
+.task-btn.photo .dot{background:#4FC3F7}
 .task-btn.video .dot{background:var(--a3)}
 
 /* KPI row */
@@ -182,6 +184,9 @@ canvas{max-height:230px}
       <button class="task-btn design active" data-t="design">
         <span class="dot"></span> ออกแบบสื่อ
       </button>
+      <button class="task-btn photo active" data-t="photo">
+        <span class="dot"></span> ถ่ายภาพ
+      </button>
       <button class="task-btn video active" data-t="video">
         <span class="dot"></span> ตัดต่อวิดีโอ
       </button>
@@ -197,6 +202,7 @@ canvas{max-height:230px}
 <!-- KPI Row -->
 <div class="kpi-row" id="kpiRow">
   <div class="kpi k1"><div class="kpi-ico">🎨</div><div class="kpi-n" id="k-design">0</div><div class="kpi-l">ออกแบบสื่อ (ทั้งหมด)</div><div class="kpi-s" id="k-design-s"></div></div>
+  <div class="kpi k-photo"><div class="kpi-ico">📷</div><div class="kpi-n" id="k-photo">0</div><div class="kpi-l">ถ่ายภาพ (ทั้งหมด)</div><div class="kpi-s" id="k-photo-s"></div></div>
   <div class="kpi k2"><div class="kpi-ico">🎬</div><div class="kpi-n" id="k-video">0</div><div class="kpi-l">ตัดต่อวิดีโอ (ทั้งหมด)</div><div class="kpi-s" id="k-video-s"></div></div>
   <div class="kpi k3"><div class="kpi-ico">✅</div><div class="kpi-n" id="k-done">0</div><div class="kpi-l">ดำเนินการแล้ว</div><div class="kpi-s" id="k-done-s"></div></div>
   <div class="kpi k4"><div class="kpi-ico">⏳</div><div class="kpi-n" id="k-inp">0</div><div class="kpi-l">อยู่ระหว่างดำเนินการ</div><div class="kpi-s" id="k-inp-s"></div></div>
@@ -281,7 +287,7 @@ const STATUS_INP  = 'อยู่ระหว่างดำเนินกา�
 
 // State
 let DB = null;
-let state = { periodType: 'year', period: 'ทั้งหมด', showDesign: true, showVideo: true };
+let state = { periodType: 'year', period: 'ทั้งหมด', showDesign: true, showPhoto: true, showVideo: true };
 let timelineChartInst = null, designChartInst = null, videoChartInst = null;
 
 Chart.defaults.color = '#8a9bc4';
@@ -404,7 +410,8 @@ function buildDB(csv) {
     const taskLabel = iTaskLabel >= 0 ? (row[iTaskLabel]||'').replace(/"/g,'').trim() : '';
     const desVal    = parseInt(row[iDes]  || 0);
     const photoVal  = iPhoto >= 0 ? parseInt(row[iPhoto] || 0) : (taskLabel === 'ถ่ายภาพ' ? 1 : 0);
-    const isDesign  = desVal + photoVal;
+    const isDesign  = desVal;        // ออกแบบสื่อ (ไม่รวมถ่ายภาพ)
+    const isPhoto   = photoVal;      // ถ่ายภาพ แยกต่างหาก
     const isVideo   = parseInt(row[iVid]  || 0);
 
     empSet.add(emp);
@@ -416,27 +423,29 @@ function buildDB(csv) {
 
     // emp_year
     if (!emp_year[emp]) emp_year[emp] = {};
-    if (!emp_year[emp][year]) emp_year[emp][year] = { design:0, video:0, done:0, inprogress:0, design_done:0, design_inprogress:0, video_done:0, video_inprogress:0 };
+    if (!emp_year[emp][year]) emp_year[emp][year] = { design:0, photo:0, video:0, done:0, inprogress:0, design_done:0, design_inprogress:0, photo_done:0, photo_inprogress:0, video_done:0, video_inprogress:0 };
     const ey = emp_year[emp][year];
     ey.design += isDesign;
+    ey.photo  += isPhoto;
     ey.video  += isVideo;
-    if (isDone)  { ey.done++; ey.design_done += isDesign; ey.video_done += isVideo; }
-    if (isInp)   { ey.inprogress++; ey.design_inprogress += isDesign; ey.video_inprogress += isVideo; }
+    if (isDone)  { ey.done++; ey.design_done += isDesign; ey.photo_done += isPhoto; ey.video_done += isVideo; }
+    if (isInp)   { ey.inprogress++; ey.design_inprogress += isDesign; ey.photo_inprogress += isPhoto; ey.video_inprogress += isVideo; }
 
     // emp_month
     if (!emp_month[emp]) emp_month[emp] = {};
-    if (!emp_month[emp][ym]) emp_month[emp][ym] = { design:0, video:0, design_done:0, design_inprogress:0, video_done:0, video_inprogress:0 };
+    if (!emp_month[emp][ym]) emp_month[emp][ym] = { design:0, photo:0, video:0, design_done:0, design_inprogress:0, photo_done:0, photo_inprogress:0, video_done:0, video_inprogress:0 };
     const em = emp_month[emp][ym];
     em.design += isDesign;
+    em.photo  += isPhoto;
     em.video  += isVideo;
-    if (isDone) { em.design_done += isDesign; em.video_done += isVideo; }
-    if (isInp)  { em.design_inprogress += isDesign; em.video_inprogress += isVideo; }
+    if (isDone) { em.design_done += isDesign; em.photo_done += isPhoto; em.video_done += isVideo; }
+    if (isInp)  { em.design_inprogress += isDesign; em.photo_inprogress += isPhoto; em.video_inprogress += isVideo; }
 
     // monthly_totals
-    if (!monthly_totals[ym]) monthly_totals[ym] = { design_done:0, design_inprogress:0, video_done:0, video_inprogress:0 };
+    if (!monthly_totals[ym]) monthly_totals[ym] = { design_done:0, design_inprogress:0, photo_done:0, photo_inprogress:0, video_done:0, video_inprogress:0 };
     const mt = monthly_totals[ym];
-    if (isDone) { mt.design_done += isDesign; mt.video_done += isVideo; }
-    if (isInp)  { mt.design_inprogress += isDesign; mt.video_inprogress += isVideo; }
+    if (isDone) { mt.design_done += isDesign; mt.photo_done += isPhoto; mt.video_done += isVideo; }
+    if (isInp)  { mt.design_inprogress += isDesign; mt.photo_inprogress += isPhoto; mt.video_inprogress += isVideo; }
   }
 
   const years   = [...yearSet].sort((a,b) => Number(a) - Number(b));
@@ -444,10 +453,10 @@ function buildDB(csv) {
   const employees = [...empSet];
 
   employees.forEach(e => {
-    years.forEach(y  => { if (!emp_year[e][y]) emp_year[e][y] = { design:0,video:0,done:0,inprogress:0,design_done:0,design_inprogress:0,video_done:0,video_inprogress:0 }; });
-    months.forEach(m => { if (!emp_month[e]) emp_month[e] = {}; if (!emp_month[e][m]) emp_month[e][m] = { design:0,video:0,design_done:0,design_inprogress:0,video_done:0,video_inprogress:0 }; });
+    years.forEach(y  => { if (!emp_year[e][y]) emp_year[e][y] = { design:0,photo:0,video:0,done:0,inprogress:0,design_done:0,design_inprogress:0,photo_done:0,photo_inprogress:0,video_done:0,video_inprogress:0 }; });
+    months.forEach(m => { if (!emp_month[e]) emp_month[e] = {}; if (!emp_month[e][m]) emp_month[e][m] = { design:0,photo:0,video:0,design_done:0,design_inprogress:0,photo_done:0,photo_inprogress:0,video_done:0,video_inprogress:0 }; });
   });
-  months.forEach(m => { if (!monthly_totals[m]) monthly_totals[m] = { design_done:0,design_inprogress:0,video_done:0,video_inprogress:0 }; });
+  months.forEach(m => { if (!monthly_totals[m]) monthly_totals[m] = { design_done:0,design_inprogress:0,photo_done:0,photo_inprogress:0,video_done:0,video_inprogress:0 }; });
 
   return { years, months, employees, emp_year, emp_month, monthly_totals };
 }
@@ -473,13 +482,15 @@ function getKeys() {
 }
 
 function getEmpData(emp) {
-  let dd=0, di=0, vd=0, vi=0;
+  let dd=0, di=0, pd=0, pi=0, vd=0, vi=0;
   if (state.periodType === 'year') {
     const yrs = state.period === 'ทั้งหมด' ? DB.years : [state.period];
     yrs.forEach(y => {
       const d = (DB.emp_year[emp] || {})[y] || {};
       dd += d.design_done || 0;
       di += d.design_inprogress || 0;
+      pd += d.photo_done || 0;
+      pi += d.photo_inprogress || 0;
       vd += d.video_done || 0;
       vi += d.video_inprogress || 0;
     });
@@ -489,11 +500,13 @@ function getEmpData(emp) {
       const d = (DB.emp_month[emp] || {})[m] || {};
       dd += d.design_done || 0;
       di += d.design_inprogress || 0;
+      pd += d.photo_done || 0;
+      pi += d.photo_inprogress || 0;
       vd += d.video_done || 0;
       vi += d.video_inprogress || 0;
     });
   }
-  return { dd, di, vd, vi, design: dd+di, video: vd+vi };
+  return { dd, di, pd, pi, vd, vi, design: dd+di, photo: pd+pi, video: vd+vi };
 }
 
 function getTimelineData() {
@@ -543,12 +556,17 @@ function update() {
   if (!DB) return;
   const empData = DB.employees.map(e=>({ name:e, ...getEmpData(e) }));
   let totalDesign=0, totalVideo=0, totalDone=0, totalInp=0;
-  if(state.showDesign&&state.showVideo){ totalDone=empData.reduce((s,e)=>s+e.dd+e.vd,0); totalInp=empData.reduce((s,e)=>s+e.di+e.vi,0); }
-  else if(state.showDesign){ totalDone=empData.reduce((s,e)=>s+e.dd,0); totalInp=empData.reduce((s,e)=>s+e.di,0); }
-  else if(state.showVideo){ totalDone=empData.reduce((s,e)=>s+e.vd,0); totalInp=empData.reduce((s,e)=>s+e.vi,0); }
-  empData.forEach(e=>{ if(state.showDesign)totalDesign+=e.design; if(state.showVideo)totalVideo+=e.video; });
+  // รวม done/inprogress ตาม filter ที่เปิดอยู่
+  empData.forEach(e=>{
+    if(state.showDesign){ totalDone+=e.dd; totalInp+=e.di; totalDesign+=e.design; }
+    if(state.showPhoto) { totalDone+=e.pd; totalInp+=e.pi; }
+    if(state.showVideo) { totalDone+=e.vd; totalInp+=e.vi; totalVideo+=e.video; }
+  });
+  let totalPhoto=0;
+  empData.forEach(e=>{ if(state.showPhoto) totalPhoto+=e.photo||0; });
 
   setNum('k-design', totalDesign);
+  setNum('k-photo', totalPhoto);
   setNum('k-video', totalVideo);
   setNum('k-done', totalDone);
   setNum('k-inp', totalInp);
@@ -559,9 +577,9 @@ function update() {
 
   const tbody = document.getElementById('empTbody');
   tbody.innerHTML = '';
-  const sorted = [...empData].sort((a,b)=>(b.design+b.video)-(a.design+a.video));
+  const sorted = [...empData].sort((a,b)=>(b.design+b.photo+b.video)-(a.design+a.photo+a.video));
   sorted.forEach(e=>{
-    const tot = (state.showDesign?e.design:0)+(state.showVideo?e.video:0);
+    const tot = (state.showDesign?e.design:0)+(state.showPhoto?e.photo||0:0)+(state.showVideo?e.video:0);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${e.name}</td>
@@ -578,11 +596,12 @@ function update() {
 
   const rankDiv = document.getElementById('rankBars');
   rankDiv.innerHTML = '';
-  const maxVal = Math.max(...sorted.map(e=>e.design+e.video), 1);
+  const maxVal = Math.max(...sorted.map(e=>e.design+(e.photo||0)+e.video), 1);
   sorted.forEach(e=>{
-    const total = e.design+e.video;
+    const total = e.design+(e.photo||0)+e.video;
     if(total===0) return;
     const dPct = (e.design/maxVal*100).toFixed(1);
+    const pPct = ((e.photo||0)/maxVal*100).toFixed(1);
     const vPct = (e.video/maxVal*100).toFixed(1);
     const div = document.createElement('div');
     div.className='rb-row';
@@ -590,6 +609,7 @@ function update() {
       <div class="rb-name">${e.name}</div>
       <div class="rb-track">
         ${state.showDesign&&e.design>0?`<div class="rb-seg design" style="width:${dPct}%"><span style="color:#fff;font-size:9px;padding:0 3px">${e.design}</span></div>`:''}
+        ${state.showPhoto&&(e.photo||0)>0?`<div class="rb-seg photo" style="width:${pPct}%;background:#4FC3F7"><span style="color:#000;font-size:9px;padding:0 3px">${e.photo}</span></div>`:''}
         ${state.showVideo&&e.video>0?`<div class="rb-seg video" style="width:${vPct}%"><span style="color:#fff;font-size:9px;padding:0 3px">${e.video}</span></div>`:''}
       </div>
       <div class="rb-total">${total}</div>
@@ -698,6 +718,7 @@ document.querySelectorAll('.task-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     btn.classList.toggle('active');
     if(btn.dataset.t==='design') state.showDesign = btn.classList.contains('active');
+    else if(btn.dataset.t==='photo') state.showPhoto = btn.classList.contains('active');
     else state.showVideo = btn.classList.contains('active');
     update();
   });
