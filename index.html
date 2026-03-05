@@ -576,6 +576,8 @@ function update() {
   const pLabel = state.period === 'ทั้งหมด' ? (state.periodType==='year'?'ทุกปี':'ทุกเดือน') : state.period;
   document.getElementById('chartPeriodLabel').textContent = pLabel;
 
+  const sorted = [...empData].sort((a,b)=>(b.design+(b.photo||0)+b.video)-(a.design+(a.photo||0)+a.video));
+
   const rankDiv = document.getElementById('rankBars');
   rankDiv.innerHTML = '';
   const maxVal = Math.max(...sorted.map(e=>e.design+(e.photo||0)+e.video), 1);
