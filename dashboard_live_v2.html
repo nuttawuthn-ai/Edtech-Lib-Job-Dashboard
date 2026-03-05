@@ -295,63 +295,86 @@ Chart.defaults.font.size = 11;
 // ใช้แทน fetch เพื่อหลีกเลี่ยง CORS บน GitHub Pages / iframe
 // Google Visualization API ส่งข้อมูลในรูปแบบ:
 // _gvizCallback({"version":"0.6","reqId":"0","status":"ok","table":{...}})
-window.google.visualization.Query.setResponse = function(response) { ... } {
-  // รองรับทั้ง 2 format ที่ Google อาจส่งมา
-  const data = response.table ? response : (response.version ? response : {table: response});
+// ============================================================
+// LOAD DATA — fetch + parse Google Visualization JSON
+// ============================================================
+function loadData() {
+  showLoading(true);
+  // ใช้ corsproxy.io เพื่อหลีกเลี่ยง CORS
+  const TARGET = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    '/gviz/tq?tqx=out:json&gid=' + SHEET_GID +
+    '&sheet=' + encodeURIComponent(SHEET_NAME);
+  const url = 'https://corsproxy.io/?' + encodeURIComponent(TARGET);
+
+  fetch(url)
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      // Google ส่งมาในรูป: /*O_o*/ google.visualization.Query.setResponse({...});
+      // ต้อง strip prefix/suffix ออกก่อน JSON.parse
+      var start = text.indexOf('(');
+      var end   = text.lastIndexOf(')');
+      if (start === -1 || end === -1) throw new Error('รูปแบบข้อมูลไม่ถูกต้อง');
+      var response = JSON.parse(text.slice(start + 1, end));
+      handleGvizResponse(response);
+    })
+    .catch(function(err) {
+      showLoading(false);
+      showError('โหลดข้อมูลไม่ได้: ' + err.message);
+    });
+}
+
+function handleGvizResponse(response) {
   try {
-    const table = data.table || data;
-  const rows  = table.rows || [];
-    const cols  = (table.cols || []).map(c => (c.label || c.id || '').toLowerCase().trim());
-    // แปลง JSON → CSV format แล้วส่งให้ buildDB เดิม
-    const header = cols.join(',');
-    const lines  = rows.map(r =>
-      r.c.map(cell => {
+    var table = response.table || response;
+    var rows  = table.rows || [];
+    var cols  = (table.cols || []).map(function(c) {
+      return (c.label || c.id || '').toLowerCase().trim();
+    });
+
+    // แปลง Google Visualization JSON → CSV แล้วส่งให้ buildDB เดิม
+    var header = cols.join(',');
+    var lines  = rows.map(function(r) {
+      return (r.c || []).map(function(cell) {
         if (!cell || cell.v === null || cell.v === undefined) return '""';
-        let v = cell.v;
-        // Google Visualization Date format: Date(yyyy,m,d)
-        if (typeof v === 'string' && v.startsWith('Date(')) {
-          const parts = v.replace('Date(','').replace(')','').split(',');
-          const yr = parts[0], mo = String(parseInt(parts[1])+1).padStart(2,'0'), dy = String(parts[2]).padStart(2,'0');
+        var v = cell.v;
+        // Google Date format: Date(yyyy,m,d)
+        if (typeof v === 'string' && v.indexOf('Date(') === 0) {
+          var parts = v.replace('Date(','').replace(')','').split(',');
+          var yr = parts[0];
+          var mo = String(parseInt(parts[1]) + 1).padStart(2, '0');
+          var dy = String(parseInt(parts[2])).padStart(2, '0');
           v = yr + '-' + mo + '-' + dy;
         }
-        return '"' + String(v).replace(/"/g,'""') + '"';
-      }).join(',')
-    );
-    const csv = [header, ...lines].join('
-');
+        return '"' + String(v).replace(/"/g, '""') + '"';
+      }).join(',');
+    });
+
+    var csv = [header].concat(lines).join('\n');
     DB = buildDB(csv);
     showLoading(false);
     buildPeriodSel();
     update();
+
     // อัปเดตตัวนับรายการ
-    const total = DB.employees.reduce((s, e) => {
-      return s + DB.years.reduce((ss, y) => {
-        const d = (DB.emp_year[e] || {})[y] || {};
+    var total = DB.employees.reduce(function(s, e) {
+      return s + DB.years.reduce(function(ss, y) {
+        var d = (DB.emp_year[e] || {})[y] || {};
         return ss + (d.design || 0) + (d.video || 0);
       }, 0);
     }, 0);
     document.getElementById('totalCount').textContent = total.toLocaleString();
+
     // อัปเดตวันที่
-    const now = new Date();
-    const thMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-    document.getElementById('dataDate').textContent = thMonths[now.getMonth()+1] + ' ' + (now.getFullYear() + 543);
-  } catch (err) {
+    var now = new Date();
+    var thMonths = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                    'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    document.getElementById('dataDate').textContent =
+      thMonths[now.getMonth() + 1] + ' ' + (now.getFullYear() + 543);
+
+  } catch(err) {
     showLoading(false);
     showError(err.message);
   }
-}
-
-// loadData — ใช้ JSONP แทน fetch เพื่อหลีกเลี่ยง CORS
-function loadData() {
-  showLoading(true);
-  const old = document.getElementById('_gvizScript');
-  if (old) old.remove();
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;handler:_gvizCallback&gid=${SHEET_GID}&sheet=${encodeURIComponent(SHEET_NAME)}`;
-  const s = document.createElement('script');
-  s.id = '_gvizScript';
-  s.src = url;
-  s.onerror = () => { showLoading(false); showError('โหลดข้อมูลไม่ได้ — ตรวจสอบว่า Sheet เป็น public'); };
-  document.head.appendChild(s);
 }
 
 function parseCSVLine(line) {
