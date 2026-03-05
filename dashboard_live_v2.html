@@ -293,10 +293,15 @@ Chart.defaults.font.size = 11;
 // ============================================================
 // JSONP callback สำหรับรับข้อมูลจาก Google Sheets
 // ใช้แทน fetch เพื่อหลีกเลี่ยง CORS บน GitHub Pages / iframe
-function _gvizCallback(data) {
+// Google Visualization API ส่งข้อมูลในรูปแบบ:
+// _gvizCallback({"version":"0.6","reqId":"0","status":"ok","table":{...}})
+function _gvizCallback(response) {
+  // รองรับทั้ง 2 format ที่ Google อาจส่งมา
+  const data = response.table ? response : (response.version ? response : {table: response});
   try {
-    const rows  = data.table.rows;
-    const cols  = data.table.cols.map(c => c.label.toLowerCase().trim());
+    const table = data.table || data;
+  const rows  = table.rows || [];
+    const cols  = (table.cols || []).map(c => (c.label || c.id || '').toLowerCase().trim());
     // แปลง JSON → CSV format แล้วส่งให้ buildDB เดิม
     const header = cols.join(',');
     const lines  = rows.map(r =>
@@ -341,7 +346,7 @@ function loadData() {
   showLoading(true);
   const old = document.getElementById('_gvizScript');
   if (old) old.remove();
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&callback=_gvizCallback&gid=${SHEET_GID}&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;handler:_gvizCallback&gid=${SHEET_GID}&sheet=${encodeURIComponent(SHEET_NAME)}`;
   const s = document.createElement('script');
   s.id = '_gvizScript';
   s.src = url;
