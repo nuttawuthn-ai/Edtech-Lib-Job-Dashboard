@@ -495,16 +495,20 @@ function getEmpData(emp) {
 
 function getTimelineData() {
   let labels, design_done_arr, design_inp_arr, video_done_arr, video_inp_arr;
+  // ปี: เรียงจากปัจจุบัน → เก่าสุด | เดือน: เรียงม.ค. → ธ.ค.
+  const sortedYears  = [...DB.years].sort((a,b) => Number(b) - Number(a));
+  const sortedMonths = [...DB.months].sort((a,b) => a.localeCompare(b));
+  const th = {1:'ม.ค.',2:'ก.พ.',3:'มี.ค.',4:'เม.ย.',5:'พ.ค.',6:'มิ.ย.',7:'ก.ค.',8:'ส.ค.',9:'ก.ย.',10:'ต.ค.',11:'พ.ย.',12:'ธ.ค.'};
+
   if (state.periodType === 'year') {
     if (state.period === 'ทั้งหมด') {
-      labels = DB.years;
-      design_done_arr = DB.years.map(y => DB.months.filter(m=>m.startsWith(y)).reduce((s,m)=>{ const d=DB.monthly_totals[m]||{};return s+(d.design_done||0);},0));
-      design_inp_arr  = DB.years.map(y => DB.months.filter(m=>m.startsWith(y)).reduce((s,m)=>{ const d=DB.monthly_totals[m]||{};return s+(d.design_inprogress||0);},0));
-      video_done_arr  = DB.years.map(y => DB.months.filter(m=>m.startsWith(y)).reduce((s,m)=>{ const d=DB.monthly_totals[m]||{};return s+(d.video_done||0);},0));
-      video_inp_arr   = DB.years.map(y => DB.months.filter(m=>m.startsWith(y)).reduce((s,m)=>{ const d=DB.monthly_totals[m]||{};return s+(d.video_inprogress||0);},0));
+      labels = sortedYears;
+      design_done_arr = sortedYears.map(y => sortedMonths.filter(m=>m.startsWith(y)).reduce((s,m)=>{ const d=DB.monthly_totals[m]||{};return s+(d.design_done||0);},0));
+      design_inp_arr  = sortedYears.map(y => sortedMonths.filter(m=>m.startsWith(y)).reduce((s,m)=>{ const d=DB.monthly_totals[m]||{};return s+(d.design_inprogress||0);},0));
+      video_done_arr  = sortedYears.map(y => sortedMonths.filter(m=>m.startsWith(y)).reduce((s,m)=>{ const d=DB.monthly_totals[m]||{};return s+(d.video_done||0);},0));
+      video_inp_arr   = sortedYears.map(y => sortedMonths.filter(m=>m.startsWith(y)).reduce((s,m)=>{ const d=DB.monthly_totals[m]||{};return s+(d.video_inprogress||0);},0));
     } else {
-      const mths = DB.months.filter(m=>m.startsWith(state.period));
-      const th = {1:'ม.ค.',2:'ก.พ.',3:'มี.ค.',4:'เม.ย.',5:'พ.ค.',6:'มิ.ย.',7:'ก.ค.',8:'ส.ค.',9:'ก.ย.',10:'ต.ค.',11:'พ.ย.',12:'ธ.ค.'};
+      const mths = sortedMonths.filter(m=>m.startsWith(state.period));
       labels = mths.map(m => th[parseInt(m.split('-')[1])]);
       design_done_arr = mths.map(m=>(DB.monthly_totals[m]||{}).design_done||0);
       design_inp_arr  = mths.map(m=>(DB.monthly_totals[m]||{}).design_inprogress||0);
@@ -513,11 +517,11 @@ function getTimelineData() {
     }
   } else {
     if (state.period === 'ทั้งหมด') {
-      labels = DB.months.map(m=>{ const p=m.split('-');return p[0].slice(2)+'/'+p[1]; });
-      design_done_arr = DB.months.map(m=>(DB.monthly_totals[m]||{}).design_done||0);
-      design_inp_arr  = DB.months.map(m=>(DB.monthly_totals[m]||{}).design_inprogress||0);
-      video_done_arr  = DB.months.map(m=>(DB.monthly_totals[m]||{}).video_done||0);
-      video_inp_arr   = DB.months.map(m=>(DB.monthly_totals[m]||{}).video_inprogress||0);
+      labels = sortedMonths.map(m=>{ const p=m.split('-'); return th[parseInt(p[1])]+' '+(Number(p[0])+543); });
+      design_done_arr = sortedMonths.map(m=>(DB.monthly_totals[m]||{}).design_done||0);
+      design_inp_arr  = sortedMonths.map(m=>(DB.monthly_totals[m]||{}).design_inprogress||0);
+      video_done_arr  = sortedMonths.map(m=>(DB.monthly_totals[m]||{}).video_done||0);
+      video_inp_arr   = sortedMonths.map(m=>(DB.monthly_totals[m]||{}).video_inprogress||0);
     } else {
       labels = [state.period];
       const d = DB.monthly_totals[state.period]||{};
@@ -656,7 +660,7 @@ function buildPeriodSel() {
       og.label = 'ปี ' + (Number(y) + 543) + ' (' + y + ')';
       // เรียงเดือนจากล่าสุด → เก่าสุด
       [...DB.months].filter(m=>m.startsWith(y))
-        .sort((a,b) => b.localeCompare(a))
+        .sort((a,b) => a.localeCompare(b))
         .forEach(m => {
           const o = document.createElement('option');
           o.value = m;
