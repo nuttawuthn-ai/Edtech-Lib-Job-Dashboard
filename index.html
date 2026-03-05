@@ -496,9 +496,13 @@ function getEmpData(emp) {
 
 function getTimelineData() {
   let labels, design_done_arr, design_inp_arr, video_done_arr, video_inp_arr;
-  // ปี: เรียงจากปัจจุบัน → เก่าสุด | เดือน: เรียงม.ค. → ธ.ค.
-  const sortedYears  = [...DB.years].sort((a,b) => Number(b) - Number(a));
-  const sortedMonths = [...DB.months].sort((a,b) => a.localeCompare(b));
+  // ปี: เรียงจากปัจจุบัน → เก่าสุด
+  // เดือน: เรียงตามปีจากปัจจุบัน แต่ภายในแต่ละปีเรียง ม.ค. → ธ.ค.
+  const sortedYears = [...DB.years].sort((a,b) => Number(b) - Number(a));
+  // จัดกลุ่มเดือนตามปี แล้วเรียงปีจากใหม่→เก่า แต่เดือนใน ม.ค.→ธ.ค.
+  const sortedMonths = sortedYears.flatMap(y =>
+    [...DB.months].filter(m => m.startsWith(y)).sort((a,b) => a.localeCompare(b))
+  );
   const th = {1:'ม.ค.',2:'ก.พ.',3:'มี.ค.',4:'เม.ย.',5:'พ.ค.',6:'มิ.ย.',7:'ก.ค.',8:'ส.ค.',9:'ก.ย.',10:'ต.ค.',11:'พ.ย.',12:'ธ.ค.'};
 
   if (state.periodType === 'year') {
