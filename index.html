@@ -677,8 +677,10 @@ function update() {
   });
 
   // chart ออกแบบสื่อ + ถ่ายภาพ รวมกัน (dd+pd = done, di+pi = inprogress)
-  const actEmps = sorted.filter(e=>(e.design+(e.photo||0))>0 || e.video>0);
-  const names   = actEmps.map(e=>e.name);
+  // design chart: แสดงเฉพาะคนที่มี design หรือ photo > 0
+  const actDesign = sorted.filter(e=>(e.design+(e.photo||0))>0);
+  // video chart: แสดงเฉพาะคนที่มี video > 0
+  const actVideo  = sorted.filter(e=>e.video>0);
   const chartOpts = (axis) => ({
     responsive:true,
     plugins:{legend:{labels:{font:{size:10},padding:8,color:'#8a9bc4'}}},
@@ -690,18 +692,18 @@ function update() {
 
   if(designChartInst) designChartInst.destroy();
   designChartInst = new Chart(document.getElementById('designChart'),{
-    type:'bar', data:{ labels:names, datasets:[
-      {label:'ดำเนินการแล้ว', data:actEmps.map(e=>e.dd+(e.pd||0)), backgroundColor:'rgba(79,247,200,0.7)',  borderRadius:5, stack:'d'},
-      {label:'กำลังดำเนินการ',data:actEmps.map(e=>e.di+(e.pi||0)), backgroundColor:'rgba(247,192,79,0.65)', borderRadius:5, stack:'d'}
+    type:'bar', data:{ labels:actDesign.map(e=>e.name), datasets:[
+      {label:'ดำเนินการแล้ว', data:actDesign.map(e=>e.dd+(e.pd||0)), backgroundColor:'rgba(79,247,200,0.7)',  borderRadius:5, stack:'d'},
+      {label:'กำลังดำเนินการ',data:actDesign.map(e=>e.di+(e.pi||0)), backgroundColor:'rgba(247,192,79,0.65)', borderRadius:5, stack:'d'}
     ]},
     options: chartOpts('d')
   });
 
   if(videoChartInst) videoChartInst.destroy();
   videoChartInst = new Chart(document.getElementById('videoChart'),{
-    type:'bar', data:{ labels:names, datasets:[
-      {label:'ดำเนินการแล้ว', data:actEmps.map(e=>e.vd), backgroundColor:'rgba(247,79,142,0.7)',  borderRadius:5, stack:'v'},
-      {label:'กำลังดำเนินการ',data:actEmps.map(e=>e.vi), backgroundColor:'rgba(247,192,79,0.65)', borderRadius:5, stack:'v'}
+    type:'bar', data:{ labels:actVideo.map(e=>e.name), datasets:[
+      {label:'ดำเนินการแล้ว', data:actVideo.map(e=>e.vd), backgroundColor:'rgba(247,79,142,0.7)',  borderRadius:5, stack:'v'},
+      {label:'กำลังดำเนินการ',data:actVideo.map(e=>e.vi), backgroundColor:'rgba(247,192,79,0.65)', borderRadius:5, stack:'v'}
     ]},
     options: chartOpts('v')
   });
