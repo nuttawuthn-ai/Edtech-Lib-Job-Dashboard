@@ -54,6 +54,10 @@ select.period-sel:focus{border-color:var(--a1)}
 .task-btn.design .dot{background:var(--a2)}
 .task-btn.photo .dot{background:#4FC3F7}
 .task-btn.video .dot{background:var(--a3)}
+.task-btn.done .dot{background:#4FF7C8}
+.task-btn.inp .dot{background:#F7C04F}
+.task-btn.active.done{border-color:#4FF7C8;background:rgba(79,247,200,.12);color:#4FF7C8}
+.task-btn.active.inp{border-color:#F7C04F;background:rgba(247,192,79,.12);color:#F7C04F}
 
 /* KPI row */
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
@@ -197,6 +201,18 @@ canvas{max-height:230px}
     </div>
   </div>
   <div class="divider"></div>
+  <div class="filter-group">
+    <span class="filter-label">🔖 สถานะ</span>
+    <div class="task-toggle">
+      <button class="task-btn done active" data-s="done">
+        <span class="dot"></span> ดำเนินการแล้ว
+      </button>
+      <button class="task-btn inp active" data-s="inp">
+        <span class="dot"></span> อยู่ระหว่างดำเนินการ
+      </button>
+    </div>
+  </div>
+  <div class="divider"></div>
   <div class="legend">
     <div class="leg-item"><div class="leg-dot" style="background:var(--done)"></div> ดำเนินการแล้ว</div>
     <div class="leg-item"><div class="leg-dot" style="background:var(--inp)"></div> อยู่ระหว่างดำเนินการ</div>
@@ -313,7 +329,7 @@ const STATUS_CANCEL = 'ยกเลิก';
 
 // State
 let DB = null;
-let state = { periodType: 'year', period: 'ทั้งหมด', showDesign: true, showPhoto: true, showVideo: true };
+let state = { periodType: 'year', period: 'ทั้งหมด', showDesign: true, showPhoto: true, showVideo: true, showDone: true, showInp: true };
 let timelineChartInst = null, designChartInst = null, videoChartInst = null;
 
 Chart.defaults.color = '#8a9bc4';
@@ -512,23 +528,15 @@ function getEmpData(emp) {
     const yrs = state.period === 'ทั้งหมด' ? DB.years : [state.period];
     yrs.forEach(y => {
       const d = (DB.emp_year[emp] || {})[y] || {};
-      dd += d.design_done || 0;
-      di += d.design_inprogress || 0;
-      pd += d.photo_done || 0;
-      pi += d.photo_inprogress || 0;
-      vd += d.video_done || 0;
-      vi += d.video_inprogress || 0;
+      if(state.showDone) { dd += d.design_done||0; pd += d.photo_done||0; vd += d.video_done||0; }
+      if(state.showInp)  { di += d.design_inprogress||0; pi += d.photo_inprogress||0; vi += d.video_inprogress||0; }
     });
   } else {
     const mths = state.period === 'ทั้งหมด' ? DB.months : DB.months.filter(m => m.startsWith(state.period));
     mths.forEach(m => {
       const d = (DB.emp_month[emp] || {})[m] || {};
-      dd += d.design_done || 0;
-      di += d.design_inprogress || 0;
-      pd += d.photo_done || 0;
-      pi += d.photo_inprogress || 0;
-      vd += d.video_done || 0;
-      vi += d.video_inprogress || 0;
+      if(state.showDone) { dd += d.design_done||0; pd += d.photo_done||0; vd += d.video_done||0; }
+      if(state.showInp)  { di += d.design_inprogress||0; pi += d.photo_inprogress||0; vi += d.video_inprogress||0; }
     });
   }
   return { dd, di, pd, pi, vd, vi, design: dd+di, photo: pd+pi, video: vd+vi };
@@ -631,10 +639,16 @@ function update() {
     const allRows = DB.rawRows.filter(r => {
       const keys = getKeys();
       if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
-      if (state.showDesign && r.taskLabel === 'ออกแบบสื่อประชาสัมพันธ์') return true;
-      if (state.showPhoto  && r.taskLabel === 'ถ่ายภาพ') return true;
-      if (state.showVideo  && r.taskLabel === 'ตัดต่อวิดีโอ') return true;
-      return false;
+      // filter ประเภทงาน
+      let typeOk = false;
+      if (state.showDesign && r.taskLabel === 'ออกแบบสื่อประชาสัมพันธ์') typeOk = true;
+      if (state.showPhoto  && r.taskLabel === 'ถ่ายภาพ')                  typeOk = true;
+      if (state.showVideo  && r.taskLabel === 'ตัดต่อวิดีโอ')             typeOk = true;
+      if (!typeOk) return false;
+      // filter สถานะ
+      if (r.status === STATUS_DONE   && !state.showDone) return false;
+      if (r.status === STATUS_INP    && !state.showInp)  return false;
+      return true;
     });
     const cntDone    = allRows.filter(r => r.status === STATUS_DONE).length;
     const cntInp     = allRows.filter(r => r.status === STATUS_INP).length;
@@ -773,9 +787,11 @@ document.getElementById('periodSel').addEventListener('change', e => {
 document.querySelectorAll('.task-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     btn.classList.toggle('active');
-    if(btn.dataset.t==='design') state.showDesign = btn.classList.contains('active');
-    else if(btn.dataset.t==='photo') state.showPhoto = btn.classList.contains('active');
-    else state.showVideo = btn.classList.contains('active');
+    if(btn.dataset.t==='design')      state.showDesign = btn.classList.contains('active');
+    else if(btn.dataset.t==='photo')  state.showPhoto  = btn.classList.contains('active');
+    else if(btn.dataset.t==='video')  state.showVideo  = btn.classList.contains('active');
+    else if(btn.dataset.s==='done')   state.showDone   = btn.classList.contains('active');
+    else if(btn.dataset.s==='inp')    state.showInp    = btn.classList.contains('active');
     update();
   });
 });
@@ -840,6 +856,8 @@ function renderJobTable() {
     if (typeFilter  && r.taskLabel !== typeFilter)  return false;
     if (empFilter   && r.emp      !== empFilter)   return false;
     if (ownerFilter && r.owner    !== ownerFilter) return false;
+    if (r.status === STATUS_DONE && !state.showDone) return false;
+    if (r.status === STATUS_INP  && !state.showInp)  return false;
     if (search     && !r.jobName.toLowerCase().includes(search)) return false;
     if (activeYm.length && !activeYm.includes(r.ym) &&
         !activeYm.some(k => r.ym.startsWith(k))) return false;
