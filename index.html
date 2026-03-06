@@ -576,20 +576,43 @@ function update() {
   if (document.getElementById('jobTbody')) renderJobTable();
   const empData = DB.employees.map(e=>({ name:e, ...getEmpData(e) }));
   let totalDesign=0, totalVideo=0, totalDone=0, totalInp=0;
-  // รวม done/inprogress ตาม filter ที่เปิดอยู่
+  // รวม done/inprogress สำหรับ status summary (ไม่รวม cancel)
   empData.forEach(e=>{
-    if(state.showDesign){ totalDone+=e.dd; totalInp+=e.di; totalDesign+=e.design; }
+    if(state.showDesign){ totalDone+=e.dd; totalInp+=e.di; }
     if(state.showPhoto) { totalDone+=e.pd; totalInp+=e.pi; }
-    if(state.showVideo) { totalDone+=e.vd; totalInp+=e.vi; totalVideo+=e.video; }
+    if(state.showVideo) { totalDone+=e.vd; totalInp+=e.vi; }
   });
-  let totalPhoto=0;
-  empData.forEach(e=>{ if(state.showPhoto) totalPhoto+=e.photo||0; });
+  // นับ total โดยตรงจาก emp_year (รวมทุกสถานะ incl. cancel)
+  let totalPhoto=0, totalAllRaw=0;
+  const activeYrs = state.period === 'ทั้งหมด'
+    ? DB.years
+    : (state.periodType === 'year' ? [state.period] : null);
+  const activeMths = state.period === 'ทั้งหมด'
+    ? DB.months
+    : (state.periodType === 'month' ? DB.months.filter(m => m.startsWith(state.period)) : null);
+
+  DB.employees.forEach(emp => {
+    if (activeYrs) {
+      activeYrs.forEach(y => {
+        const d = (DB.emp_year[emp]||{})[y]||{};
+        if (state.showDesign) { totalDesign += d.design||0; totalAllRaw += d.design||0; }
+        if (state.showPhoto)  { totalPhoto  += d.photo ||0; totalAllRaw += d.photo ||0; }
+        if (state.showVideo)  { totalVideo  += d.video ||0; totalAllRaw += d.video ||0; }
+      });
+    } else if (activeMths) {
+      activeMths.forEach(m => {
+        const d = (DB.emp_month[emp]||{})[m]||{};
+        if (state.showDesign) { totalDesign += d.design||0; totalAllRaw += d.design||0; }
+        if (state.showPhoto)  { totalPhoto  += d.photo ||0; totalAllRaw += d.photo ||0; }
+        if (state.showVideo)  { totalVideo  += d.video ||0; totalAllRaw += d.video ||0; }
+      });
+    }
+  });
 
   setNum('k-design', totalDesign);
   setNum('k-photo', totalPhoto);
   setNum('k-video', totalVideo);
-  const totalAll = totalDesign + totalPhoto + totalVideo;
-  setNum('k-total', totalAll);
+  setNum('k-total', totalAllRaw);
 
   const pLabel = state.period === 'ทั้งหมด' ? (state.periodType==='year'?'ทุกปี':'ทุกเดือน') : state.period;
   document.getElementById('chartPeriodLabel').textContent = pLabel;
