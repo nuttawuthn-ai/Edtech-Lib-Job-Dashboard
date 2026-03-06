@@ -263,6 +263,9 @@ canvas{max-height:230px}
       <select id="jobEmpFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
         <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
       </select>
+      <select id="jobOwnerFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
+        <option value="">— เจ้าของงาน ทั้งหมด —</option>
+      </select>
       <input id="jobSearch" placeholder="🔍 ค้นหาชื่องาน..." style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px;min-width:180px">
     </div>
   </div>
@@ -807,20 +810,34 @@ function buildJobTable() {
   });
   empSel.value = prevEmp;
 
+  // populate owner dropdown
+  const ownerSel = document.getElementById('jobOwnerFilter');
+  const prevOwner = ownerSel.value;
+  const owners = [...new Set(DB.rawRows.map(r => r.owner).filter(Boolean))].sort();
+  ownerSel.innerHTML = '<option value="">— เจ้าของงาน ทั้งหมด —</option>';
+  owners.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o;
+    ownerSel.appendChild(opt);
+  });
+  ownerSel.value = prevOwner;
+
   renderJobTable();
 }
 
 function renderJobTable() {
-  const typeFilter = document.getElementById('jobTypeFilter').value;
-  const empFilter  = document.getElementById('jobEmpFilter').value;
+  const typeFilter  = document.getElementById('jobTypeFilter').value;
+  const empFilter   = document.getElementById('jobEmpFilter').value;
+  const ownerFilter = document.getElementById('jobOwnerFilter').value;
   const search     = document.getElementById('jobSearch').value.toLowerCase().trim();
 
   // filter ตาม period ที่เลือกอยู่ด้วย
   const activeYm = getKeys();
 
   const rows = DB.rawRows.filter(r => {
-    if (typeFilter && r.taskLabel !== typeFilter) return false;
-    if (empFilter  && r.emp      !== empFilter)  return false;
+    if (typeFilter  && r.taskLabel !== typeFilter)  return false;
+    if (empFilter   && r.emp      !== empFilter)   return false;
+    if (ownerFilter && r.owner    !== ownerFilter) return false;
     if (search     && !r.jobName.toLowerCase().includes(search)) return false;
     if (activeYm.length && !activeYm.includes(r.ym) &&
         !activeYm.some(k => r.ym.startsWith(k))) return false;
@@ -866,7 +883,7 @@ function renderJobTable() {
 
 // event listeners สำหรับ job table filters
 document.addEventListener('DOMContentLoaded', function() {
-  ['jobTypeFilter','jobEmpFilter','jobSearch'].forEach(id => {
+  ['jobTypeFilter','jobEmpFilter','jobOwnerFilter','jobSearch'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener(id === 'jobSearch' ? 'input' : 'change', () => { jobCurrentPage = 1; renderJobTable(); });
   });
