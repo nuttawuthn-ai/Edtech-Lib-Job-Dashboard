@@ -218,11 +218,11 @@ canvas{max-height:230px}
     </div>
     <canvas id="timelineChart"></canvas>
   </div>
-  <div class="card">
+  <div class="card" style="display:flex;flex-direction:column">
     <div class="ch">
       <div class="ct"><span class="ico">📊</span> สรุปสถานะงาน</div>
     </div>
-    <div id="statusSummary" style="display:flex;flex-direction:column;gap:12px;padding:8px 0"></div>
+    <div id="statusSummary" style="display:flex;flex-direction:column;gap:0;flex:1;justify-content:space-between;padding:4px 0"></div>
   </div>
 </div>
 
@@ -641,7 +641,7 @@ function update() {
       { label:'อยู่ระหว่างดำเนินการ',   cnt:cntInp,    pct:pctInp,    color:'#F7C04F', bg:'rgba(247,192,79,.12)' },
       { label:'ยกเลิก',                  cnt:cntCancel, pct:pctCancel, color:'#F74F4F', bg:'rgba(247,79,79,.12)'  },
     ].map(s => `
-      <div style="background:${s.bg};border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+      <div style="background:${s.bg};border-radius:8px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex:1;margin:4px 0">
         <span style="color:${s.color};font-weight:600">${s.label}</span>
         <div style="display:flex;align-items:center;gap:12px">
           <div style="background:var(--bg2);border-radius:4px;height:8px;width:100px;overflow:hidden">
