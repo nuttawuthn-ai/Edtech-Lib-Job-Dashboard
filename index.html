@@ -273,9 +273,9 @@ canvas{max-height:230px}
           <th style="min-width:220px;white-space:nowrap">ชื่องาน</th>
           <th style="min-width:110px;white-space:nowrap">วันที่มอบหมาย</th>
           <th style="min-width:110px;white-space:nowrap">วันที่เสร็จงาน</th>
-          <th style="min-width:100px;white-space:nowrap">เจ้าของงาน</th>
+          <th style="min-width:200px;white-space:nowrap">เจ้าของงาน</th>
           <th style="min-width:160px;white-space:nowrap">ประเภท</th>
-          <th style="min-width:100px;white-space:nowrap">ผู้รับผิดชอบ</th>
+          <th style="min-width:100px;white-space:nowrap;text-align:center">ผู้รับผิดชอบ</th>
           <th style="min-width:140px;white-space:nowrap">สถานะ</th>
         </tr>
       </thead>
@@ -849,7 +849,7 @@ function renderJobTable() {
       <td style="white-space:nowrap">${r.reqDate    || '—'}</td>
       <td>${r.owner || '—'}</td>
       <td style="white-space:nowrap">${taskIcon[r.taskLabel]||''} ${r.taskLabel}</td>
-      <td>${r.emp}</td>
+      <td style="text-align:center">${r.emp}</td>
       <td style="${statusColor[r.status]||''};white-space:nowrap">${r.status}</td>
     </tr>`).join('');
 
