@@ -270,23 +270,23 @@ canvas{max-height:230px}
     <table class="emp-table" id="jobTable" style="width:100%">
       <thead>
         <tr>
-          <th style="min-width:180px">ชื่องาน</th>
-          <th>วันที่มอบหมาย</th>
-          <th>วันที่เสร็จงาน</th>
-          <th>เจ้าของงาน</th>
-          <th>ประเภท</th>
-          <th>ผู้รับผิดชอบ</th>
-          <th>สถานะ</th>
+          <th style="min-width:220px;white-space:nowrap">ชื่องาน</th>
+          <th style="min-width:110px;white-space:nowrap">วันที่มอบหมาย</th>
+          <th style="min-width:110px;white-space:nowrap">วันที่เสร็จงาน</th>
+          <th style="min-width:100px;white-space:nowrap">เจ้าของงาน</th>
+          <th style="min-width:160px;white-space:nowrap">ประเภท</th>
+          <th style="min-width:100px;white-space:nowrap">ผู้รับผิดชอบ</th>
+          <th style="min-width:140px;white-space:nowrap">สถานะ</th>
         </tr>
       </thead>
       <tbody id="jobTbody"></tbody>
     </table>
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;flex-wrap:wrap;gap:.5rem">
-    <div id="jobCount" style="font-size:12px;color:var(--t3)"></div>
+    <div id="jobCount" style="font-size:12px;color:#7eb8d4;font-weight:500"></div>
     <div style="display:flex;align-items:center;gap:8px">
       <button id="jobPagePrev" onclick="jobChangePage(-1)" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:3px 12px;cursor:pointer">◀</button>
-      <span style="color:var(--t2);font-size:13px">หน้า <span id="jobPageNum">1</span></span>
+      <span style="color:#b0cce0;font-size:13px;font-weight:600">หน้า <span id="jobPageNum">1</span></span>
       <button id="jobPageNext" onclick="jobChangePage(1)"  style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:3px 12px;cursor:pointer">▶</button>
     </div>
   </div>
