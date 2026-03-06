@@ -382,7 +382,6 @@ function buildDB(csv) {
   const lines = csv.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
                    .split('\n').filter(l => l.trim());
   const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/"/g,'').trim());
-  console.log('[DB] headers:', headers);
 
   // หา index — ใช้ includes() เผื่อมี whitespace
   const iEmp       = headers.findIndex(h => h.includes('employee'));
@@ -397,7 +396,6 @@ function buildDB(csv) {
   const iDes       = headers.findIndex(h => h === 'is_design');
   const iPhoto     = headers.findIndex(h => h === 'is_photo');
   const iVid       = headers.findIndex(h => h === 'is_video');
-  console.log('[DB] idx emp:',iEmp,'status:',iStatus,'year:',iYear,'ym:',iYearMon,'task:',iTaskLabel,'des:',iDes,'photo:',iPhoto,'vid:',iVid);
 
   const emp_year = {}, emp_month = {}, monthly_totals = {};
   const rawRows = []; // เก็บ raw data สำหรับตารางรายชื่องาน
