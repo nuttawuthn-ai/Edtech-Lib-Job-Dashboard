@@ -22,37 +22,37 @@
   --done:#4ff7c8;--inp:#f7c04f;--cancel:#f74f8e;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--t1);font-family:'DB Ozone X',sans-serif;font-size:14px;min-height:100vh}
+body{background:var(--bg);color:var(--t1);font-family:'DB Ozone X',sans-serif;font-size:21px;min-height:100vh}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(79,142,247,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(79,142,247,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
 
 .wrap{max-width:1500px;margin:0 auto;padding:0 20px 48px;position:relative;z-index:1}
 
 /* Header */
 .hdr{padding:24px 0 20px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;border-bottom:1px solid var(--border);margin-bottom:24px}
-.hdr-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.28);color:var(--a1);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:8px}
-.hdr-tag::before{content:'●';font-size:7px;animation:blink 2s infinite}
+.hdr-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.28);color:var(--a1);font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:8px}
+.hdr-tag::before{content:'●';font-size:9px;animation:blink 2s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.hdr h1{font-size:24px;font-weight:800;line-height:1.2}
+.hdr h1{font-size:36px;font-weight:800;line-height:1.2}
 .hdr h1 em{font-style:normal;color:var(--a1)}
-.hdr-sub{font-size:12px;color:var(--t2);margin-top:5px}
+.hdr-sub{font-size:18px;color:var(--t2);margin-top:5px}
 
 /* Filter bar */
 .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin-bottom:20px}
 .filter-group{display:flex;align-items:center;gap:8px}
-.filter-label{font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.5px;white-space:nowrap}
+.filter-label{font-size:15px;font-weight:600;color:var(--t2);letter-spacing:.5px;white-space:nowrap}
 .seg-btns{display:flex;gap:2px;background:var(--bg2);border-radius:8px;padding:3px}
-.seg-btn{border:none;background:transparent;color:var(--t2);font-family:inherit;font-size:12px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.seg-btn{border:none;background:transparent;color:var(--t2);font-family:inherit;font-size:18px;font-weight:600;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .2s;white-space:nowrap}
 .seg-btn.active{background:var(--a1);color:#fff;box-shadow:0 2px 8px rgba(79,142,247,.35)}
 .seg-btn:hover:not(.active){color:var(--t1);background:rgba(255,255,255,.06)}
 
-select.period-sel{background:var(--bg2);border:1px solid var(--border);color:var(--t1);font-family:inherit;font-size:12px;padding:7px 32px 7px 12px;border-radius:8px;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='%238a9bc4' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:10px;outline:none}
+select.period-sel{background:var(--bg2);border:1px solid var(--border);color:var(--t1);font-family:inherit;font-size:18px;padding:7px 32px 7px 12px;border-radius:8px;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='%238a9bc4' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:10px;outline:none}
 select.period-sel:focus{border-color:var(--a1)}
 
 .divider{width:1px;height:28px;background:var(--border);margin:0 2px}
 
 /* Task type toggle */
 .task-toggle{display:flex;gap:8px}
-.task-btn{display:flex;align-items:center;gap:6px;border:1.5px solid var(--border);background:transparent;color:var(--t2);font-family:inherit;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .2s}
+.task-btn{display:flex;align-items:center;gap:6px;border:1.5px solid var(--border);background:transparent;color:var(--t2);font-family:inherit;font-size:18px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;transition:all .2s}
 .task-btn.active.design{border-color:var(--a2);background:rgba(124,94,247,.12);color:#c4aaff}
 .task-btn.active.photo{border-color:#4FC3F7;background:rgba(79,195,247,.12);color:#4FC3F7}
 .task-btn.active.video{border-color:var(--a3);background:rgba(247,79,142,.12);color:#ffaacc}
@@ -74,13 +74,13 @@ select.period-sel:focus{border-color:var(--a1)}
 .kpi.k2::after{background:linear-gradient(90deg,var(--a2),var(--a3))}
 .kpi.k3::after{background:linear-gradient(90deg,var(--done),var(--a1))}
 .kpi.k3::after{background:linear-gradient(90deg,#a78bfa,var(--a1))}
-.kpi-ico{font-size:22px;margin-bottom:8px}
-.kpi-n{font-size:32px;font-weight:800;line-height:1}
+.kpi-ico{font-size:33px;margin-bottom:8px}
+.kpi-n{font-size:48px;font-weight:800;line-height:1}
 .kpi.k1 .kpi-n{color:var(--a1)}
 .kpi.k2 .kpi-n{color:#c4aaff}
 .kpi.k3 .kpi-n{color:#a78bfa}
-.kpi-l{font-size:11px;color:var(--t2);margin-top:4px;font-weight:500}
-.kpi-s{font-size:10px;color:var(--t3);margin-top:6px}
+.kpi-l{font-size:15px;color:var(--t2);margin-top:4px;font-weight:500}
+.kpi-s{font-size:15px;color:var(--t3);margin-top:6px}
 
 /* Grid */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
@@ -90,26 +90,26 @@ select.period-sel:focus{border-color:var(--a1)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;transition:border-color .2s}
 .card:hover{border-color:rgba(79,142,247,.25)}
 .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.ct{font-size:13px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px}
-.ct .ico{width:26px;height:26px;background:var(--card2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px}
-.cb{font-size:10px;background:var(--card2);border:1px solid var(--border);color:var(--t2);padding:3px 9px;border-radius:20px}
+.ct{font-size:21px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:8px}
+.ct .ico{width:26px;height:26px;background:var(--card2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:21px}
+.cb{font-size:15px;background:var(--card2);border:1px solid var(--border);color:var(--t2);padding:3px 9px;border-radius:20px}
 
 canvas{max-height:230px}
 
 /* Employee table */
 .emp-table{width:100%;border-collapse:separate;border-spacing:0 4px}
-.emp-table th{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);padding:0 10px 8px;text-align:left}
+.emp-table th{font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);padding:0 10px 8px;text-align:left}
 .emp-table th:not(:first-child){text-align:center}
-.emp-table td{padding:9px 10px;background:var(--bg2);font-size:12px}
+.emp-table td{padding:9px 10px;background:var(--bg2);font-size:18px}
 /* jobTable — header และ cell สว่างขึ้น */
-#jobTable th{color:#7eb8d4;font-size:11px}
-#jobTable td{color:#b0cce0;font-size:12px}
+#jobTable th{color:#7eb8d4;font-size:15px}
+#jobTable td{color:#b0cce0;font-size:18px}
 #jobTable td:first-child{color:#cde3f0;font-weight:600}
 .emp-table td:first-child{border-radius:8px 0 0 8px;font-weight:600}
 .emp-table td:last-child{border-radius:0 8px 8px 0}
 .emp-table tr:hover td{background:var(--card2)}
 
-.badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;padding:2px 8px;border-radius:6px;font-size:15px;font-weight:700}
 .badge.design{background:rgba(124,94,247,.18);color:#c4aaff}
 .badge.video{background:rgba(247,79,142,.18);color:#ffaacc}
 .badge.done{background:rgba(79,247,200,.15);color:var(--done)}
@@ -122,17 +122,17 @@ canvas{max-height:230px}
 /* Rank bars section */
 .rank-bars{display:flex;flex-direction:column;gap:8px}
 .rb-row{display:flex;align-items:center;gap:10px}
-.rb-name{font-size:11px;font-weight:600;color:var(--t1);width:72px;flex-shrink:0;text-align:right}
+.rb-name{font-size:15px;font-weight:600;color:var(--t1);width:72px;flex-shrink:0;text-align:right}
 .rb-track{flex:1;height:22px;background:var(--bg2);border-radius:4px;overflow:hidden;display:flex}
-.rb-seg{height:100%;transition:width .8s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;min-width:0}
+.rb-seg{height:100%;transition:width .8s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;min-width:0}
 .rb-seg.design{background:linear-gradient(90deg,rgba(124,94,247,.7),rgba(124,94,247,.5))}
 .rb-seg.video{background:linear-gradient(90deg,rgba(247,79,142,.7),rgba(247,79,142,.5))}
-.rb-total{font-size:11px;font-weight:700;color:var(--t2);width:36px;text-align:right;flex-shrink:0}
+.rb-total{font-size:15px;font-weight:700;color:var(--t2);width:36px;text-align:right;flex-shrink:0}
 
 /* Legend */
 
 /* Section labels */
-.sl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:12px;margin-top:4px;display:flex;align-items:center;gap:10px}
+.sl{font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:12px;margin-top:4px;display:flex;align-items:center;gap:10px}
 .sl::after{content:'';flex:1;height:1px;background:var(--border)}
 
 @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(2,1fr)}.g2,.g3{grid-template-columns:1fr}}
@@ -142,9 +142,9 @@ canvas{max-height:230px}
 #loadingOverlay{position:fixed;inset:0;background:rgba(7,9,15,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
 .spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--a1);border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{color:var(--t2);font-size:13px;letter-spacing:1px}
-#errorMsg{display:none;background:rgba(247,79,142,.15);border:1px solid rgba(247,79,142,.4);color:#ffaacc;padding:12px 18px;border-radius:10px;margin:16px 0;font-size:13px}
-.reload-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.35);color:var(--a1);font-family:inherit;font-size:11px;font-weight:600;padding:5px 12px;border-radius:8px;cursor:pointer;transition:all .2s}
+.loading-text{color:var(--t2);font-size:21px;letter-spacing:1px}
+#errorMsg{display:none;background:rgba(247,79,142,.15);border:1px solid rgba(247,79,142,.4);color:#ffaacc;padding:12px 18px;border-radius:10px;margin:16px 0;font-size:21px}
+.reload-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(79,142,247,.12);border:1px solid rgba(79,142,247,.35);color:var(--a1);font-family:inherit;font-size:15px;font-weight:600;padding:5px 12px;border-radius:8px;cursor:pointer;transition:all .2s}
 .reload-btn:hover{background:rgba(79,142,247,.22)}
 </style>
 </head>
@@ -165,7 +165,7 @@ canvas{max-height:230px}
     <div class="hdr-sub">วิเคราะห์ภาระงานรายบุคคล · กรองตามช่วงเวลา · แสดงสถานะดำเนินการ</div>
   </div>
   <div style="text-align:right;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
-    <div style="font-size:11px;color:var(--t2);background:var(--card);border:1px solid var(--border);padding:8px 14px;border-radius:8px">
+    <div style="font-size:15px;color:var(--t2);background:var(--card);border:1px solid var(--border);padding:8px 14px;border-radius:8px">
       ข้อมูล ณ <strong style="color:var(--t1)" id="dataDate">—</strong><br>
       <span style="color:var(--t3)">รวม <span id="totalCount">—</span> รายการ</span>
     </div>
@@ -268,19 +268,19 @@ canvas{max-height:230px}
   <div class="ch" style="flex-wrap:wrap;gap:.5rem">
     <div class="ct" style="color:#4FC3F7"><span class="ico">📋</span> รายชื่องานแยกตามประเภท & ผู้รับผิดชอบ</div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
-      <select id="jobTypeFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
+      <select id="jobTypeFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:21px">
         <option value="">— ประเภทงาน ทั้งหมด —</option>
         <option value="ออกแบบสื่อประชาสัมพันธ์">🎨 ออกแบบสื่อประชาสัมพันธ์</option>
         <option value="ถ่ายภาพ">📷 ถ่ายภาพ</option>
         <option value="ตัดต่อวิดีโอ">🎬 ตัดต่อวิดีโอ</option>
       </select>
-      <select id="jobEmpFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
+      <select id="jobEmpFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:21px">
         <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
       </select>
-      <select id="jobOwnerFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
+      <select id="jobOwnerFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:21px">
         <option value="">— เจ้าของงาน ทั้งหมด —</option>
       </select>
-      <input id="jobSearch" placeholder="🔍 ค้นหาชื่องาน..." style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px;min-width:180px">
+      <input id="jobSearch" placeholder="🔍 ค้นหาชื่องาน..." style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:21px;min-width:180px">
     </div>
   </div>
   <div style="overflow-x:auto">
@@ -300,10 +300,10 @@ canvas{max-height:230px}
     </table>
   </div>
   <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;flex-wrap:wrap;gap:.5rem">
-    <div id="jobCount" style="font-size:12px;color:#7eb8d4;font-weight:500"></div>
+    <div id="jobCount" style="font-size:18px;color:#7eb8d4;font-weight:500"></div>
     <div style="display:flex;align-items:center;gap:8px">
       <button id="jobPagePrev" onclick="jobChangePage(-1)" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:3px 12px;cursor:pointer">◀</button>
-      <span style="color:#b0cce0;font-size:13px;font-weight:600">หน้า <span id="jobPageNum">1</span></span>
+      <span style="color:#b0cce0;font-size:21px;font-weight:600">หน้า <span id="jobPageNum">1</span></span>
       <button id="jobPageNext" onclick="jobChangePage(1)"  style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:3px 12px;cursor:pointer">▶</button>
     </div>
   </div>
@@ -667,7 +667,7 @@ function update() {
             <div style="background:${s.color};height:100%;width:${s.pct}%;transition:width .4s"></div>
           </div>
           <span style="color:${s.color};font-weight:700;min-width:28px;text-align:right">${s.cnt}</span>
-          <span style="color:var(--t3);font-size:11px;min-width:32px">${s.pct}%</span>
+          <span style="color:var(--t3);font-size:15px;min-width:32px">${s.pct}%</span>
         </div>
       </div>`).join('');
   }
