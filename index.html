@@ -266,8 +266,10 @@ canvas{max-height:230px}
       <thead>
         <tr>
           <th style="min-width:180px">ชื่องาน</th>
-          <th>ประเภท</th>
+          <th>วันที่มอบหมาย</th>
+          <th>วันที่เสร็จงาน</th>
           <th>เจ้าของงาน</th>
+          <th>ประเภท</th>
           <th>ผู้รับผิดชอบ</th>
           <th>สถานะ</th>
         </tr>
@@ -388,8 +390,10 @@ function buildDB(csv) {
   const iYear      = headers.findIndex(h => h === 'year');
   const iYearMon   = headers.findIndex(h => h.includes('year_month'));
   const iTaskLabel = headers.findIndex(h => h.includes('task_label'));
-  const iJobName   = headers.findIndex(h => h.includes('job_name'));
-  const iOwner     = headers.findIndex(h => h.includes('owner'));
+  const iJobName    = headers.findIndex(h => h.includes('job_name'));
+  const iOwner      = headers.findIndex(h => h.includes('owner'));
+  const iAssignDate = headers.findIndex(h => h.includes('assign_date'));
+  const iReqDate    = headers.findIndex(h => h.includes('request_date'));
   const iDes       = headers.findIndex(h => h === 'is_design');
   const iPhoto     = headers.findIndex(h => h === 'is_photo');
   const iVid       = headers.findIndex(h => h === 'is_video');
@@ -415,8 +419,10 @@ function buildDB(csv) {
     // task label + raw row สำหรับตารางรายชื่องาน
     const taskLabel = iTaskLabel >= 0 ? (row[iTaskLabel]||'').replace(/"/g,'').trim() : '';
     const jobName   = iJobName   >= 0 ? (row[iJobName]  ||'').replace(/"/g,'').trim() : '';
-    const owner = iOwner >= 0 ? (row[iOwner]||'').replace(/"/g,'').trim() : '';
-    rawRows.push({ jobName, taskLabel, owner, emp, status, ym });
+    const owner      = iOwner      >= 0 ? (row[iOwner]     ||'').replace(/"/g,'').trim() : '';
+    const assignDate = iAssignDate >= 0 ? (row[iAssignDate]||'').replace(/"/g,'').trim() : '';
+    const reqDate    = iReqDate    >= 0 ? (row[iReqDate]   ||'').replace(/"/g,'').trim() : '';
+    rawRows.push({ jobName, taskLabel, owner, emp, status, ym, assignDate, reqDate });
 
     const desVal    = parseInt(row[iDes]  || 0);
     const photoVal  = iPhoto >= 0 ? parseInt(row[iPhoto] || 0) : (taskLabel === 'ถ่ายภาพ' ? 1 : 0);
@@ -810,8 +816,10 @@ function renderJobTable() {
   tbody.innerHTML = pageRows.map(r => `
     <tr>
       <td>${r.jobName || '—'}</td>
-      <td style="white-space:nowrap">${taskIcon[r.taskLabel]||''} ${r.taskLabel}</td>
+      <td style="white-space:nowrap">${r.assignDate || '—'}</td>
+      <td style="white-space:nowrap">${r.reqDate    || '—'}</td>
       <td>${r.owner || '—'}</td>
+      <td style="white-space:nowrap">${taskIcon[r.taskLabel]||''} ${r.taskLabel}</td>
       <td>${r.emp}</td>
       <td style="${statusColor[r.status]||''};white-space:nowrap">${r.status}</td>
     </tr>`).join('');
