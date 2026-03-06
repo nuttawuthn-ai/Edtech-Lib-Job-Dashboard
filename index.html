@@ -413,7 +413,10 @@ function buildDB(csv) {
     const ymRaw  = (row[iYearMon]|| '').replace(/"/g,'').trim();
     const ym     = ymRaw.length >= 7 ? ymRaw.substring(0, 7) : ymRaw; // normalize → YYYY-MM
 
-    if (!emp || !year || !ym) continue;
+    if (!emp || !ym) continue;  // skip แถวที่ขาด key fields
+    // derive year จาก ym ถ้า year column ว่าง
+    const yearFinal = year || (ym.length >= 4 ? ym.substring(0, 4) : '');
+    if (!yearFinal) continue;
 
     // นับ is_photo รวมใน design + fallback จาก task_label
     // task label + raw row สำหรับตารางรายชื่องาน
@@ -431,7 +434,7 @@ function buildDB(csv) {
     const isVideo   = parseInt(row[iVid]  || 0);
 
     empSet.add(emp);
-    yearSet.add(year);
+    yearSet.add(yearFinal);
     monthSet.add(ym);
 
     const isDone = status === STATUS_DONE;
@@ -439,8 +442,8 @@ function buildDB(csv) {
 
     // emp_year
     if (!emp_year[emp]) emp_year[emp] = {};
-    if (!emp_year[emp][year]) emp_year[emp][year] = { design:0, photo:0, video:0, done:0, inprogress:0, design_done:0, design_inprogress:0, photo_done:0, photo_inprogress:0, video_done:0, video_inprogress:0 };
-    const ey = emp_year[emp][year];
+    if (!emp_year[emp][yearFinal]) emp_year[emp][yearFinal] = { design:0, photo:0, video:0, done:0, inprogress:0, design_done:0, design_inprogress:0, photo_done:0, photo_inprogress:0, video_done:0, video_inprogress:0 };
+    const ey = emp_year[emp][yearFinal];
     ey.design += isDesign;
     ey.photo  += isPhoto;
     ey.video  += isVideo;
