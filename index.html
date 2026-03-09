@@ -281,6 +281,7 @@ canvas{max-height:230px}
     <table class="emp-table" id="jobTable" style="width:100%">
       <thead>
         <tr>
+          <th style="width:44px;text-align:center;white-space:nowrap">ลำดับ</th>
           <th style="min-width:220px;white-space:nowrap">ชื่องาน</th>
           <th style="min-width:110px;white-space:nowrap">วันที่มอบหมาย</th>
           <th style="min-width:110px;white-space:nowrap">วันที่เสร็จงาน</th>
@@ -871,8 +872,9 @@ function renderJobTable() {
   const pageRows  = rows.slice((jobPage-1)*PAGE_SIZE, jobPage*PAGE_SIZE);
 
   const tbody = document.getElementById('jobTbody');
-  tbody.innerHTML = pageRows.map(r => `
+  tbody.innerHTML = pageRows.map((r,i) => `
     <tr>
+      <td style="text-align:center;color:#a0aec0;font-size:11px;font-weight:600">${(jobPage-1)*PAGE_SIZE+i+1}</td>
       <td>${r.jobName || '—'}</td>
       <td style="white-space:nowrap">${r.assignDate || '—'}</td>
       <td style="white-space:nowrap">${r.reqDate    || '—'}</td>
