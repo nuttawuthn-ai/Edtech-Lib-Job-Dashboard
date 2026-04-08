@@ -842,13 +842,13 @@ function update() {
   const LABEL_PHOTO  = allTaskLabels.find(l => l.includes('ถ่าย'))  || 'ถ่ายภาพ';
   const LABEL_VIDEO  = allTaskLabels.find(l => l.includes('ตัด') || l.includes('วิดีโอ')) || 'ตัดต่อวิดีโอ';
 
-  const keys = getKeys();
+  const combinedKeys = getKeys();
 
   // หาพนักงานที่มีงาน av ในช่วงเวลาที่เลือก (ไม่ขึ้นกับ toggle)
   const avEmpSet = new Set(
     DB.rawRows
       .filter(r => {
-        if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+        if (combinedKeys.length && !combinedKeys.includes(r.ym) && !combinedKeys.some(k => r.ym.startsWith(k))) return false;
         return r.taskLabel === LABEL_AV;
       })
       .map(r => r.emp)
@@ -857,7 +857,7 @@ function update() {
   // สร้างข้อมูลรายบุคคลโดยตรงจาก rawRows (ไม่ขึ้นกับ state.showDesign/photo/video/av)
   const avCombinedEmpData = [...avEmpSet].map(emp => {
     const empRows = DB.rawRows.filter(r => {
-      if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+      if (combinedKeys.length && !combinedKeys.includes(r.ym) && !combinedKeys.some(k => r.ym.startsWith(k))) return false;
       if (r.emp !== emp) return false;
       if (r.status === STATUS_DONE && !state.showDone) return false;
       if (r.status === STATUS_INP  && !state.showInp)  return false;
@@ -907,7 +907,7 @@ function update() {
   const avCombinedSummaryDiv = document.getElementById('avCombinedSummary');
   if (avCombinedSummaryDiv) {
     const combinedRows = DB.rawRows.filter(r => {
-      if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+      if (combinedKeys.length && !combinedKeys.includes(r.ym) && !combinedKeys.some(k => r.ym.startsWith(k))) return false;
       if (!avEmpSet.has(r.emp)) return false;
       if (r.status === STATUS_DONE && !state.showDone) return false;
       if (r.status === STATUS_INP  && !state.showInp)  return false;
