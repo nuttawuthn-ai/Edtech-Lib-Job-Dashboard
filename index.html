@@ -263,7 +263,7 @@ canvas{max-height:230px}
   </div>
 </div>
 
-<!-- AV chart -->
+<!-- AV chart + Combined chart -->
 <div class="g2" style="margin-bottom:16px">
   <div class="card">
     <div class="ch">
@@ -276,6 +276,24 @@ canvas{max-height:230px}
       <div class="ct"><span class="ico">📊</span> สรุปงานโสตทัศนูปกรณ์</div>
     </div>
     <div id="avSummary" style="display:flex;flex-direction:column;gap:0;flex:1;justify-content:space-between;padding:4px 0"></div>
+  </div>
+</div>
+
+<!-- Combined AV + Design/Photo/Video chart -->
+<div class="sl">โสตทัศนูปกรณ์ ร่วมกับ ออกแบบสื่อ · ถ่ายภาพ · ตัดต่อวิดีโอ</div>
+<div class="g2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="ch">
+      <div class="ct"><span class="ico">🔗</span> งานร่วม: โสตฯ + ออกแบบสื่อ + ถ่ายภาพ + ตัดต่อวิดีโอ รายบุคคล</div>
+      <div class="cb">รวมทุกประเภท</div>
+    </div>
+    <canvas id="avCombinedChart" style="max-height:260px"></canvas>
+  </div>
+  <div class="card" style="display:flex;flex-direction:column">
+    <div class="ch">
+      <div class="ct"><span class="ico">📋</span> สรุปงานร่วม (รวมทุกประเภทร่วมกับโสตทัศนูปกรณ์)</div>
+    </div>
+    <div id="avCombinedSummary" style="display:flex;flex-direction:column;gap:0;flex:1;justify-content:space-between;padding:4px 0"></div>
   </div>
 </div>
 
@@ -348,7 +366,7 @@ const STATUS_CANCEL = 'ยกเลิก';
 // State
 let DB = null;
 let state = { periodType: 'year', period: 'ทั้งหมด', showDesign: true, showPhoto: true, showVideo: true, showAv: true, showDone: true, showInp: true };
-let timelineChartInst = null, designChartInst = null, videoChartInst = null, avChartInst = null;
+let timelineChartInst = null, designChartInst = null, videoChartInst = null, avChartInst = null, avCombinedChartInst = null;
 
 Chart.defaults.color = '#8a9bc4';
 Chart.defaults.font.family = "'Sarabun', sans-serif";
@@ -801,6 +819,82 @@ function update() {
           <span style="color:var(--t3);font-size:11px;min-width:32px">${s.pct}%</span>
         </div>
       </div>`).join('');
+  }
+
+  // ============================================================
+  // Combined Chart: ควบคุมโสตทัศนูปกรณ์ ร่วมกับ ออกแบบสื่อ ถ่ายภาพ ตัดต่อวิดีโอ
+  // แสดงเฉพาะคนที่มี av > 0 และแสดง breakdown ทุกประเภทในกราฟเดียว
+  // ============================================================
+  const actAvAll = sorted.filter(e => e.av > 0);
+  if (avCombinedChartInst) avCombinedChartInst.destroy();
+  avCombinedChartInst = new Chart(document.getElementById('avCombinedChart'), {
+    type: 'bar',
+    data: {
+      labels: actAvAll.map(e => e.name),
+      datasets: [
+        { label: 'โสตฯ (แล้ว)',    data: actAvAll.map(e => e.avd), backgroundColor: 'rgba(247,162,79,0.85)',  borderRadius: 4, stack: 'av' },
+        { label: 'โสตฯ (กำลัง)',   data: actAvAll.map(e => e.avi), backgroundColor: 'rgba(247,162,79,0.35)',  borderRadius: 4, stack: 'av' },
+        { label: 'ออกแบบ (แล้ว)',  data: actAvAll.map(e => e.dd),  backgroundColor: 'rgba(124,94,247,0.75)',  borderRadius: 4, stack: 'des' },
+        { label: 'ออกแบบ (กำลัง)',  data: actAvAll.map(e => e.di),  backgroundColor: 'rgba(124,94,247,0.30)',  borderRadius: 4, stack: 'des' },
+        { label: 'ถ่ายภาพ (แล้ว)', data: actAvAll.map(e => e.pd),  backgroundColor: 'rgba(79,195,247,0.80)',  borderRadius: 4, stack: 'ph' },
+        { label: 'ถ่ายภาพ (กำลัง)',data: actAvAll.map(e => e.pi),  backgroundColor: 'rgba(79,195,247,0.30)',  borderRadius: 4, stack: 'ph' },
+        { label: 'วิดีโอ (แล้ว)',   data: actAvAll.map(e => e.vd),  backgroundColor: 'rgba(247,79,142,0.75)',  borderRadius: 4, stack: 'vid' },
+        { label: 'วิดีโอ (กำลัง)',  data: actAvAll.map(e => e.vi),  backgroundColor: 'rgba(247,79,142,0.30)',  borderRadius: 4, stack: 'vid' },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { font: { size: 10 }, padding: 8, color: '#8a9bc4' } } },
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(255,255,255,.02)' }, ticks: { color: '#8a9bc4' } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#4a5980' }, beginAtZero: true }
+      }
+    }
+  });
+
+  // avCombinedSummary — นับรวมทุกประเภทของคนที่มี av > 0
+  const avCombinedSummaryDiv = document.getElementById('avCombinedSummary');
+  if (avCombinedSummaryDiv) {
+    const keys = getKeys();
+    // กรองเฉพาะพนักงานที่มีงาน av ในช่วงเวลานี้
+    const avEmps = new Set(
+      DB.rawRows
+        .filter(r => {
+          if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+          return r.taskLabel === 'ควบคุมโสตทัศนูปกรณ์';
+        })
+        .map(r => r.emp)
+    );
+    // นับงานทุกประเภทของพนักงานกลุ่มนี้
+    const combinedRows = DB.rawRows.filter(r => {
+      if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+      if (!avEmps.has(r.emp)) return false;
+      if (r.status === STATUS_DONE && !state.showDone) return false;
+      if (r.status === STATUS_INP  && !state.showInp)  return false;
+      return true;
+    });
+    const byType = {
+      'ควบคุมโสตทัศนูปกรณ์': { icon:'🎤', color:'#ffd0a0', bg:'rgba(247,162,79,.12)' },
+      'ออกแบบสื่อประชาสัมพันธ์': { icon:'🎨', color:'#c4aaff', bg:'rgba(124,94,247,.12)' },
+      'ถ่ายภาพ': { icon:'📷', color:'#4FC3F7', bg:'rgba(79,195,247,.12)' },
+      'ตัดต่อวิดีโอ': { icon:'🎬', color:'#ffaacc', bg:'rgba(247,79,142,.12)' },
+    };
+    const totalCombined = combinedRows.length || 1;
+    avCombinedSummaryDiv.innerHTML = Object.entries(byType).map(([label, cfg]) => {
+      const cnt = combinedRows.filter(r => r.taskLabel === label).length;
+      const pct = Math.round(cnt / totalCombined * 100);
+      return `
+        <div style="background:${cfg.bg};border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex:1;margin:3px 0">
+          <span style="color:${cfg.color};font-weight:600;font-size:12px">${cfg.icon} ${label}</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="background:var(--bg2);border-radius:4px;height:8px;width:80px;overflow:hidden">
+              <div style="background:${cfg.color};height:100%;width:${pct}%;transition:width .4s"></div>
+            </div>
+            <span style="color:${cfg.color};font-weight:700;min-width:24px;text-align:right">${cnt}</span>
+            <span style="color:var(--t3);font-size:11px;min-width:32px">${pct}%</span>
+          </div>
+        </div>`;
+    }).join('');
   }
 }
 
