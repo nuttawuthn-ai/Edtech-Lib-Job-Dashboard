@@ -281,7 +281,6 @@ canvas{max-height:230px}
 
 <!-- Combined AV + Design/Photo/Video chart -->
 <div class="sl">โสตทัศนูปกรณ์ ร่วมกับ ออกแบบสื่อ · ถ่ายภาพ · ตัดต่อวิดีโอ</div>
-<div id="debugTaskLabels" style="display:none;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.25);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--t2)"></div>
 <div class="g2" style="margin-bottom:16px">
   <div class="card">
     <div class="ch">
@@ -307,10 +306,6 @@ canvas{max-height:230px}
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
       <select id="jobTypeFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
         <option value="">— ประเภทงาน ทั้งหมด —</option>
-        <option value="ออกแบบสื่อประชาสัมพันธ์">🎨 ออกแบบสื่อประชาสัมพันธ์</option>
-        <option value="ถ่ายภาพ">📷 ถ่ายภาพ</option>
-        <option value="ตัดต่อวิดีโอ">🎬 ตัดต่อวิดีโอ</option>
-        <option value="ควบคุมโสตทัศนูปกรณ์">🎤 ควบคุมโสตทัศนูปกรณ์</option>
       </select>
       <select id="jobEmpFilter" style="background:var(--bg2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:4px 10px;font-size:13px">
         <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
@@ -540,7 +535,14 @@ function buildDB(csv) {
   });
   months.forEach(m => { if (!monthly_totals[m]) monthly_totals[m] = { design_done:0,design_inprogress:0,photo_done:0,photo_inprogress:0,video_done:0,video_inprogress:0,av_done:0,av_inprogress:0 }; });
 
-  return { years, months, employees, emp_year, emp_month, monthly_totals, rawRows };
+  const allLabels = [...new Set(rawRows.map(r => r.taskLabel).filter(Boolean))];
+  const labelAv     = allLabels.find(l => l.includes('โสต'))    || 'ควบคุมโสตทัศนูปกรณ์';
+  const labelDesign = allLabels.find(l => l.includes('ออกแบบ')) || 'ออกแบบสื่อประชาสัมพันธ์';
+  const labelPhoto  = allLabels.find(l => l.includes('ถ่าย'))   || 'ถ่ายภาพ';
+  const labelVideo  = allLabels.find(l => l.includes('ตัด') || l.includes('วิดีโอ')) || 'ตัดต่อวิดีโอ';
+
+  return { years, months, employees, emp_year, emp_month, monthly_totals, rawRows,
+           labelAv, labelDesign, labelPhoto, labelVideo };
 }
 
 function showLoading(show) {
@@ -690,10 +692,10 @@ function update() {
       if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
       // filter ประเภทงาน
       let typeOk = false;
-      if (state.showDesign && r.taskLabel === 'ออกแบบสื่อประชาสัมพันธ์') typeOk = true;
-      if (state.showPhoto  && r.taskLabel === 'ถ่ายภาพ')                  typeOk = true;
-      if (state.showVideo  && r.taskLabel === 'ตัดต่อวิดีโอ')             typeOk = true;
-      if (state.showAv     && r.taskLabel === 'ควบคุมโสตทัศนูปกรณ์')      typeOk = true;
+      if (state.showDesign && r.taskLabel === DB.labelDesign) typeOk = true;
+      if (state.showPhoto  && r.taskLabel === DB.labelPhoto)  typeOk = true;
+      if (state.showVideo  && r.taskLabel === DB.labelVideo)  typeOk = true;
+      if (state.showAv     && r.taskLabel === DB.labelAv)     typeOk = true;
       if (!typeOk) return false;
       // filter สถานะ
       if (r.status === STATUS_DONE   && !state.showDone) return false;
@@ -793,7 +795,7 @@ function update() {
     const avKeys = getKeys();
     const avRows = DB.rawRows.filter(r => {
       if (avKeys.length && !avKeys.includes(r.ym) && !avKeys.some(k => r.ym.startsWith(k))) return false;
-      if (r.taskLabel !== 'ควบคุมโสตทัศนูปกรณ์') return false;
+      if (r.taskLabel !== DB.labelAv) return false;
       if (r.status === STATUS_DONE && !state.showDone) return false;
       if (r.status === STATUS_INP  && !state.showInp)  return false;
       return true;
@@ -827,20 +829,11 @@ function update() {
   // ดึงพนักงานที่มีงาน av โดยตรงจาก rawRows (ไม่ขึ้นกับ state.showAv)
   // ============================================================
 
-  // DEBUG: แสดง taskLabel จริงๆ ทั้งหมดที่มีในข้อมูล
-  const allTaskLabels = [...new Set(DB.rawRows.map(r => r.taskLabel))].sort();
-  const debugDiv = document.getElementById('debugTaskLabels');
-  if (debugDiv) {
-    debugDiv.innerHTML = '<b style="color:#f7c04f">taskLabel จริงในข้อมูล:</b><br>' +
-      allTaskLabels.map(l => `<code style="color:#4ff7c8;font-size:11px">"${l}"</code>`).join('<br>');
-    debugDiv.style.display = 'block';
-  }
-
-  // ใช้ taskLabel จริงจากข้อมูล (เผื่อชื่อต่างจาก hardcode)
-  const LABEL_AV     = allTaskLabels.find(l => l.includes('โสต')) || 'ควบคุมโสตทัศนูปกรณ์';
-  const LABEL_DESIGN = allTaskLabels.find(l => l.includes('ออกแบบ')) || 'ออกแบบสื่อประชาสัมพันธ์';
-  const LABEL_PHOTO  = allTaskLabels.find(l => l.includes('ถ่าย'))  || 'ถ่ายภาพ';
-  const LABEL_VIDEO  = allTaskLabels.find(l => l.includes('ตัด') || l.includes('วิดีโอ')) || 'ตัดต่อวิดีโอ';
+  // ใช้ label จริงจาก DB (คำนวณไว้แล้วตั้งแต่ buildDB)
+  const LABEL_AV     = DB.labelAv;
+  const LABEL_DESIGN = DB.labelDesign;
+  const LABEL_PHOTO  = DB.labelPhoto;
+  const LABEL_VIDEO  = DB.labelVideo;
 
   const combinedKeys = getKeys();
 
@@ -1033,6 +1026,20 @@ function jobChangePage(dir) {
 function buildJobTable() {
   if (!DB) return;
 
+  // populate type dropdown จาก taskLabel จริงในข้อมูล (ไม่ hardcode)
+  const typeSel = document.getElementById('jobTypeFilter');
+  const prevType = typeSel.value;
+  const taskIcon = { 'ออกแบบสื่อประชาสัมพันธ์':'🎨','ถ่ายภาพ':'📷','ตัดต่อวิดีโอ':'🎬','ควบคุมโสตทัศนูปกรณ์':'🎤' };
+  const realTypes = [...new Set(DB.rawRows.map(r => r.taskLabel).filter(Boolean))].sort();
+  typeSel.innerHTML = '<option value="">— ประเภทงาน ทั้งหมด —</option>';
+  realTypes.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t;
+    o.textContent = (taskIcon[t] || '') + ' ' + t;
+    typeSel.appendChild(o);
+  });
+  typeSel.value = prevType;
+
   // populate employee dropdown
   const empSel = document.getElementById('jobEmpFilter');
   const prevEmp = empSel.value;
@@ -1077,6 +1084,17 @@ function renderJobTable() {
     if (search     && !r.jobName.toLowerCase().includes(search)) return false;
     if (activeYm.length && !activeYm.includes(r.ym) &&
         !activeYm.some(k => r.ym.startsWith(k))) return false;
+    // filter ตาม task type toggle (ถ้าไม่ได้เลือก typeFilter เฉพาะเจาะจง)
+    if (!typeFilter) {
+      let typeOk = false;
+      if (state.showDesign && r.taskLabel === DB.labelDesign) typeOk = true;
+      if (state.showPhoto  && r.taskLabel === DB.labelPhoto)  typeOk = true;
+      if (state.showVideo  && r.taskLabel === DB.labelVideo)  typeOk = true;
+      if (state.showAv     && r.taskLabel === DB.labelAv)     typeOk = true;
+      // fallback: ถ้า label ไม่ match ใดเลย ให้แสดงเสมอ (ป้องกัน label ใหม่หาย)
+      if (!DB.labelDesign && !DB.labelPhoto && !DB.labelVideo && !DB.labelAv) typeOk = true;
+      if (!typeOk) return false;
+    }
     return true;
   });
 
