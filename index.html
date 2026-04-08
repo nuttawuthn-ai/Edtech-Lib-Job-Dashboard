@@ -281,6 +281,7 @@ canvas{max-height:230px}
 
 <!-- Combined AV + Design/Photo/Video chart -->
 <div class="sl">โสตทัศนูปกรณ์ ร่วมกับ ออกแบบสื่อ · ถ่ายภาพ · ตัดต่อวิดีโอ</div>
+<div id="debugTaskLabels" style="display:none;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.25);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:12px;line-height:1.8;color:var(--t2)"></div>
 <div class="g2" style="margin-bottom:16px">
   <div class="card">
     <div class="ch">
@@ -789,9 +790,9 @@ function update() {
   // avSummary
   const avSummaryDiv = document.getElementById('avSummary');
   if (avSummaryDiv) {
+    const avKeys = getKeys();
     const avRows = DB.rawRows.filter(r => {
-      const keys = getKeys();
-      if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+      if (avKeys.length && !avKeys.includes(r.ym) && !avKeys.some(k => r.ym.startsWith(k))) return false;
       if (r.taskLabel !== 'ควบคุมโสตทัศนูปกรณ์') return false;
       if (r.status === STATUS_DONE && !state.showDone) return false;
       if (r.status === STATUS_INP  && !state.showInp)  return false;
@@ -825,6 +826,22 @@ function update() {
   // Combined Chart: ควบคุมโสตทัศนูปกรณ์ ร่วมกับ ออกแบบสื่อ ถ่ายภาพ ตัดต่อวิดีโอ
   // ดึงพนักงานที่มีงาน av โดยตรงจาก rawRows (ไม่ขึ้นกับ state.showAv)
   // ============================================================
+
+  // DEBUG: แสดง taskLabel จริงๆ ทั้งหมดที่มีในข้อมูล
+  const allTaskLabels = [...new Set(DB.rawRows.map(r => r.taskLabel))].sort();
+  const debugDiv = document.getElementById('debugTaskLabels');
+  if (debugDiv) {
+    debugDiv.innerHTML = '<b style="color:#f7c04f">taskLabel จริงในข้อมูล:</b><br>' +
+      allTaskLabels.map(l => `<code style="color:#4ff7c8;font-size:11px">"${l}"</code>`).join('<br>');
+    debugDiv.style.display = 'block';
+  }
+
+  // ใช้ taskLabel จริงจากข้อมูล (เผื่อชื่อต่างจาก hardcode)
+  const LABEL_AV     = allTaskLabels.find(l => l.includes('โสต')) || 'ควบคุมโสตทัศนูปกรณ์';
+  const LABEL_DESIGN = allTaskLabels.find(l => l.includes('ออกแบบ')) || 'ออกแบบสื่อประชาสัมพันธ์';
+  const LABEL_PHOTO  = allTaskLabels.find(l => l.includes('ถ่าย'))  || 'ถ่ายภาพ';
+  const LABEL_VIDEO  = allTaskLabels.find(l => l.includes('ตัด') || l.includes('วิดีโอ')) || 'ตัดต่อวิดีโอ';
+
   const keys = getKeys();
 
   // หาพนักงานที่มีงาน av ในช่วงเวลาที่เลือก (ไม่ขึ้นกับ toggle)
@@ -832,7 +849,7 @@ function update() {
     DB.rawRows
       .filter(r => {
         if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
-        return r.taskLabel === 'ควบคุมโสตทัศนูปกรณ์';
+        return r.taskLabel === LABEL_AV;
       })
       .map(r => r.emp)
   );
@@ -849,14 +866,14 @@ function update() {
     const count = (label, status) => empRows.filter(r => r.taskLabel === label && (status ? r.status === status : true)).length;
     return {
       name: emp,
-      avd:  count('ควบคุมโสตทัศนูปกรณ์',  STATUS_DONE),
-      avi:  count('ควบคุมโสตทัศนูปกรณ์',  STATUS_INP),
-      dd:   count('ออกแบบสื่อประชาสัมพันธ์', STATUS_DONE),
-      di:   count('ออกแบบสื่อประชาสัมพันธ์', STATUS_INP),
-      pd:   count('ถ่ายภาพ',   STATUS_DONE),
-      pi:   count('ถ่ายภาพ',   STATUS_INP),
-      vd:   count('ตัดต่อวิดีโอ', STATUS_DONE),
-      vi:   count('ตัดต่อวิดีโอ', STATUS_INP),
+      avd:  count(LABEL_AV,     STATUS_DONE),
+      avi:  count(LABEL_AV,     STATUS_INP),
+      dd:   count(LABEL_DESIGN, STATUS_DONE),
+      di:   count(LABEL_DESIGN, STATUS_INP),
+      pd:   count(LABEL_PHOTO,  STATUS_DONE),
+      pi:   count(LABEL_PHOTO,  STATUS_INP),
+      vd:   count(LABEL_VIDEO,  STATUS_DONE),
+      vi:   count(LABEL_VIDEO,  STATUS_INP),
     };
   }).sort((a,b) => (b.avd+b.avi+b.dd+b.di+b.pd+b.pi+b.vd+b.vi) - (a.avd+a.avi+a.dd+a.di+a.pd+a.pi+a.vd+a.vi));
 
@@ -896,24 +913,24 @@ function update() {
       if (r.status === STATUS_INP  && !state.showInp)  return false;
       return true;
     });
-    const byType = {
-      'ควบคุมโสตทัศนูปกรณ์':    { icon:'🎤', color:'#ffd0a0', bg:'rgba(247,162,79,.12)' },
-      'ออกแบบสื่อประชาสัมพันธ์': { icon:'🎨', color:'#c4aaff', bg:'rgba(124,94,247,.12)' },
-      'ถ่ายภาพ':                   { icon:'📷', color:'#4FC3F7', bg:'rgba(79,195,247,.12)' },
-      'ตัดต่อวิดีโอ':              { icon:'🎬', color:'#ffaacc', bg:'rgba(247,79,142,.12)' },
-    };
+    const byType = [
+      { label: LABEL_AV,     icon:'🎤', color:'#ffd0a0', bg:'rgba(247,162,79,.12)' },
+      { label: LABEL_DESIGN, icon:'🎨', color:'#c4aaff', bg:'rgba(124,94,247,.12)' },
+      { label: LABEL_PHOTO,  icon:'📷', color:'#4FC3F7', bg:'rgba(79,195,247,.12)' },
+      { label: LABEL_VIDEO,  icon:'🎬', color:'#ffaacc', bg:'rgba(247,79,142,.12)' },
+    ];
     const totalCombined = combinedRows.length || 1;
-    avCombinedSummaryDiv.innerHTML = Object.entries(byType).map(([label, cfg]) => {
+    avCombinedSummaryDiv.innerHTML = byType.map(({label, icon, color, bg}) => {
       const cnt = combinedRows.filter(r => r.taskLabel === label).length;
       const pct = Math.round(cnt / totalCombined * 100);
       return `
-        <div style="background:${cfg.bg};border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex:1;margin:3px 0">
-          <span style="color:${cfg.color};font-weight:600;font-size:12px">${cfg.icon} ${label}</span>
+        <div style="background:${bg};border-radius:8px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex:1;margin:3px 0">
+          <span style="color:${color};font-weight:600;font-size:12px">${icon} ${label}</span>
           <div style="display:flex;align-items:center;gap:10px">
             <div style="background:var(--bg2);border-radius:4px;height:8px;width:80px;overflow:hidden">
-              <div style="background:${cfg.color};height:100%;width:${pct}%;transition:width .4s"></div>
+              <div style="background:${color};height:100%;width:${pct}%;transition:width .4s"></div>
             </div>
-            <span style="color:${cfg.color};font-weight:700;min-width:24px;text-align:right">${cnt}</span>
+            <span style="color:${color};font-weight:700;min-width:24px;text-align:right">${cnt}</span>
             <span style="color:var(--t3);font-size:11px;min-width:32px">${pct}%</span>
           </div>
         </div>`;
