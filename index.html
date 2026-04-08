@@ -480,7 +480,13 @@ function buildDB(csv) {
     const owner      = iOwner      >= 0 ? (row[iOwner]     ||'').replace(/"/g,'').trim() : '';
     const assignDate = iAssignDate >= 0 ? (row[iAssignDate]||'').replace(/"/g,'').trim() : '';
     const reqDate    = iReqDate    >= 0 ? (row[iReqDate]   ||'').replace(/"/g,'').trim() : '';
-    rawRows.push({ jobName, taskLabel, owner, emp, status, ym, assignDate, reqDate });
+    // ถ้า taskLabel ว่างหรือไม่ชัดเจน ให้ derive จาก is_* flags
+    let effectiveLabel = taskLabel;
+    if (iAv >= 0 && parseInt(row[iAv] || 0) === 1) effectiveLabel = 'ควบคุมโสตทัศนูปกรณ์';
+    else if (iVid >= 0 && parseInt(row[iVid] || 0) === 1 && !taskLabel.includes('ตัด') && !taskLabel.includes('วิดีโอ')) effectiveLabel = taskLabel || 'ตัดต่อวิดีโอ';
+    else if (iPhoto >= 0 && parseInt(row[iPhoto] || 0) === 1 && !taskLabel.includes('ถ่าย')) effectiveLabel = taskLabel || 'ถ่ายภาพ';
+
+    rawRows.push({ jobName, taskLabel: effectiveLabel, owner, emp, status, ym, assignDate, reqDate });
 
     const desVal    = parseInt(row[iDes]  || 0);
     const photoVal  = iPhoto >= 0 ? parseInt(row[iPhoto] || 0) : (taskLabel === 'ถ่ายภาพ' ? 1 : 0);
