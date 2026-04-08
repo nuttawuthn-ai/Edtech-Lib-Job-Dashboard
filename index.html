@@ -172,6 +172,7 @@ canvas{max-height:230px}
 </div>
 
 <div id="errorMsg"></div>
+<div id="debugPanel" style="display:none;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.3);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;line-height:2;color:var(--t2);word-break:break-all"></div>
 
 <!-- Filter Bar -->
 <div class="filters">
@@ -394,6 +395,20 @@ function loadData() {
       buildPeriodSel();
       update();
       buildJobTable();
+
+      // DEBUG PANEL — แสดงข้อมูลดิบเพื่อตรวจสอบ
+      const dbg = document.getElementById('debugPanel');
+      if (dbg) {
+        const labels = [...new Set(DB.rawRows.map(r => r.taskLabel))].sort();
+        const avRows = DB.rawRows.filter(r => r.taskLabel === DB.labelAv).slice(0,3);
+        dbg.innerHTML =
+          '<b style="color:#f7c04f">taskLabel ทั้งหมดในข้อมูล:</b><br>' +
+          labels.map(l=>`<code style="color:#4ff7c8">"${l}"</code> (${DB.rawRows.filter(r=>r.taskLabel===l).length} แถว)`).join('<br>') +
+          '<br><br><b style="color:#f7c04f">DB.labelAv = </b><code style="color:#4ff7c8">"${DB.labelAv}"</code>' +
+          '<br><b style="color:#f7c04f">AV rows ตัวอย่าง:</b><br>' +
+          avRows.map(r=>`<code style="color:#a78bfa">${JSON.stringify(r)}</code>`).join('<br>');
+        dbg.style.display = 'block';
+      }
       // อัปเดตตัวนับ
       var total = DB.employees.reduce(function(s,e) {
         return s + DB.years.reduce(function(ss,y) {
