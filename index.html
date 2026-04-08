@@ -823,23 +823,57 @@ function update() {
 
   // ============================================================
   // Combined Chart: ควบคุมโสตทัศนูปกรณ์ ร่วมกับ ออกแบบสื่อ ถ่ายภาพ ตัดต่อวิดีโอ
-  // แสดงเฉพาะคนที่มี av > 0 และแสดง breakdown ทุกประเภทในกราฟเดียว
+  // ดึงพนักงานที่มีงาน av โดยตรงจาก rawRows (ไม่ขึ้นกับ state.showAv)
   // ============================================================
-  const actAvAll = sorted.filter(e => e.av > 0);
+  const keys = getKeys();
+
+  // หาพนักงานที่มีงาน av ในช่วงเวลาที่เลือก (ไม่ขึ้นกับ toggle)
+  const avEmpSet = new Set(
+    DB.rawRows
+      .filter(r => {
+        if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+        return r.taskLabel === 'ควบคุมโสตทัศนูปกรณ์';
+      })
+      .map(r => r.emp)
+  );
+
+  // สร้างข้อมูลรายบุคคลโดยตรงจาก rawRows (ไม่ขึ้นกับ state.showDesign/photo/video/av)
+  const avCombinedEmpData = [...avEmpSet].map(emp => {
+    const empRows = DB.rawRows.filter(r => {
+      if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
+      if (r.emp !== emp) return false;
+      if (r.status === STATUS_DONE && !state.showDone) return false;
+      if (r.status === STATUS_INP  && !state.showInp)  return false;
+      return true;
+    });
+    const count = (label, status) => empRows.filter(r => r.taskLabel === label && (status ? r.status === status : true)).length;
+    return {
+      name: emp,
+      avd:  count('ควบคุมโสตทัศนูปกรณ์',  STATUS_DONE),
+      avi:  count('ควบคุมโสตทัศนูปกรณ์',  STATUS_INP),
+      dd:   count('ออกแบบสื่อประชาสัมพันธ์', STATUS_DONE),
+      di:   count('ออกแบบสื่อประชาสัมพันธ์', STATUS_INP),
+      pd:   count('ถ่ายภาพ',   STATUS_DONE),
+      pi:   count('ถ่ายภาพ',   STATUS_INP),
+      vd:   count('ตัดต่อวิดีโอ', STATUS_DONE),
+      vi:   count('ตัดต่อวิดีโอ', STATUS_INP),
+    };
+  }).sort((a,b) => (b.avd+b.avi+b.dd+b.di+b.pd+b.pi+b.vd+b.vi) - (a.avd+a.avi+a.dd+a.di+a.pd+a.pi+a.vd+a.vi));
+
   if (avCombinedChartInst) avCombinedChartInst.destroy();
   avCombinedChartInst = new Chart(document.getElementById('avCombinedChart'), {
     type: 'bar',
     data: {
-      labels: actAvAll.map(e => e.name),
+      labels: avCombinedEmpData.map(e => e.name),
       datasets: [
-        { label: 'โสตฯ (แล้ว)',    data: actAvAll.map(e => e.avd), backgroundColor: 'rgba(247,162,79,0.85)',  borderRadius: 4, stack: 'av' },
-        { label: 'โสตฯ (กำลัง)',   data: actAvAll.map(e => e.avi), backgroundColor: 'rgba(247,162,79,0.35)',  borderRadius: 4, stack: 'av' },
-        { label: 'ออกแบบ (แล้ว)',  data: actAvAll.map(e => e.dd),  backgroundColor: 'rgba(124,94,247,0.75)',  borderRadius: 4, stack: 'des' },
-        { label: 'ออกแบบ (กำลัง)',  data: actAvAll.map(e => e.di),  backgroundColor: 'rgba(124,94,247,0.30)',  borderRadius: 4, stack: 'des' },
-        { label: 'ถ่ายภาพ (แล้ว)', data: actAvAll.map(e => e.pd),  backgroundColor: 'rgba(79,195,247,0.80)',  borderRadius: 4, stack: 'ph' },
-        { label: 'ถ่ายภาพ (กำลัง)',data: actAvAll.map(e => e.pi),  backgroundColor: 'rgba(79,195,247,0.30)',  borderRadius: 4, stack: 'ph' },
-        { label: 'วิดีโอ (แล้ว)',   data: actAvAll.map(e => e.vd),  backgroundColor: 'rgba(247,79,142,0.75)',  borderRadius: 4, stack: 'vid' },
-        { label: 'วิดีโอ (กำลัง)',  data: actAvAll.map(e => e.vi),  backgroundColor: 'rgba(247,79,142,0.30)',  borderRadius: 4, stack: 'vid' },
+        { label: 'โสตฯ (แล้ว)',    data: avCombinedEmpData.map(e => e.avd), backgroundColor: 'rgba(247,162,79,0.85)',  borderRadius: 4, stack: 'av' },
+        { label: 'โสตฯ (กำลัง)',   data: avCombinedEmpData.map(e => e.avi), backgroundColor: 'rgba(247,162,79,0.35)',  borderRadius: 4, stack: 'av' },
+        { label: 'ออกแบบ (แล้ว)',  data: avCombinedEmpData.map(e => e.dd),  backgroundColor: 'rgba(124,94,247,0.75)',  borderRadius: 4, stack: 'des' },
+        { label: 'ออกแบบ (กำลัง)', data: avCombinedEmpData.map(e => e.di),  backgroundColor: 'rgba(124,94,247,0.30)',  borderRadius: 4, stack: 'des' },
+        { label: 'ถ่ายภาพ (แล้ว)', data: avCombinedEmpData.map(e => e.pd),  backgroundColor: 'rgba(79,195,247,0.80)',  borderRadius: 4, stack: 'ph' },
+        { label: 'ถ่ายภาพ (กำลัง)',data: avCombinedEmpData.map(e => e.pi),  backgroundColor: 'rgba(79,195,247,0.30)',  borderRadius: 4, stack: 'ph' },
+        { label: 'วิดีโอ (แล้ว)',   data: avCombinedEmpData.map(e => e.vd),  backgroundColor: 'rgba(247,79,142,0.75)',  borderRadius: 4, stack: 'vid' },
+        { label: 'วิดีโอ (กำลัง)',  data: avCombinedEmpData.map(e => e.vi),  backgroundColor: 'rgba(247,79,142,0.30)',  borderRadius: 4, stack: 'vid' },
       ]
     },
     options: {
@@ -855,29 +889,18 @@ function update() {
   // avCombinedSummary — นับรวมทุกประเภทของคนที่มี av > 0
   const avCombinedSummaryDiv = document.getElementById('avCombinedSummary');
   if (avCombinedSummaryDiv) {
-    const keys = getKeys();
-    // กรองเฉพาะพนักงานที่มีงาน av ในช่วงเวลานี้
-    const avEmps = new Set(
-      DB.rawRows
-        .filter(r => {
-          if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
-          return r.taskLabel === 'ควบคุมโสตทัศนูปกรณ์';
-        })
-        .map(r => r.emp)
-    );
-    // นับงานทุกประเภทของพนักงานกลุ่มนี้
     const combinedRows = DB.rawRows.filter(r => {
       if (keys.length && !keys.includes(r.ym) && !keys.some(k => r.ym.startsWith(k))) return false;
-      if (!avEmps.has(r.emp)) return false;
+      if (!avEmpSet.has(r.emp)) return false;
       if (r.status === STATUS_DONE && !state.showDone) return false;
       if (r.status === STATUS_INP  && !state.showInp)  return false;
       return true;
     });
     const byType = {
-      'ควบคุมโสตทัศนูปกรณ์': { icon:'🎤', color:'#ffd0a0', bg:'rgba(247,162,79,.12)' },
+      'ควบคุมโสตทัศนูปกรณ์':    { icon:'🎤', color:'#ffd0a0', bg:'rgba(247,162,79,.12)' },
       'ออกแบบสื่อประชาสัมพันธ์': { icon:'🎨', color:'#c4aaff', bg:'rgba(124,94,247,.12)' },
-      'ถ่ายภาพ': { icon:'📷', color:'#4FC3F7', bg:'rgba(79,195,247,.12)' },
-      'ตัดต่อวิดีโอ': { icon:'🎬', color:'#ffaacc', bg:'rgba(247,79,142,.12)' },
+      'ถ่ายภาพ':                   { icon:'📷', color:'#4FC3F7', bg:'rgba(79,195,247,.12)' },
+      'ตัดต่อวิดีโอ':              { icon:'🎬', color:'#ffaacc', bg:'rgba(247,79,142,.12)' },
     };
     const totalCombined = combinedRows.length || 1;
     avCombinedSummaryDiv.innerHTML = Object.entries(byType).map(([label, cfg]) => {
