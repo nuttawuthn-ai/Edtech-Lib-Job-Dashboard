@@ -504,7 +504,7 @@
 /* ================================================================
    CONFIG
 ================================================================ */
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqZS0gQqy2IFVJpLGkGGdPMcjfWJtFSwkYWfXh8RHjKnVQwdaB0Zf0i1k81_E7O-LH/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxWldQQ80yaHOldQtzgcaNvD262RcdsGjTa_vMn7Renah-41dqLkpt-awqN1ooX1LXQ/exec';
 // ↑ เปลี่ยนเป็น URL ของ Web App ที่ Deploy แล้ว
 
 const PENDING  = 'อยู่ระหว่างดำเนินการ';
@@ -537,18 +537,56 @@ const C = {
 };
 
 /* ================================================================
+   JSONP LOADER  (หลีก CORS จาก GAS redirect ได้ 100%)
+================================================================ */
+function loadViaJsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '__gasCb_' + Date.now();
+    const script = document.createElement('script');
+
+    const cleanup = () => {
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+
+    // timeout 30 วินาที
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timeout: GAS ไม่ตอบสนองใน 30 วินาที'));
+    }, 30000);
+
+    window[cbName] = (result) => {
+      clearTimeout(timer);
+      cleanup();
+      if (result && result.ok) resolve(result.rows);
+      else reject(new Error(result ? result.error : 'GAS ตอบกลับผิดรูปแบบ'));
+    };
+
+    script.src = url + '?callback=' + cbName + '&t=' + Date.now();
+    script.onerror = () => {
+      clearTimeout(timer);
+      cleanup();
+      reject(new Error('โหลด script ล้มเหลว — ตรวจสอบ GAS_URL และการ Deploy'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+/* ================================================================
    LOAD DATA
 ================================================================ */
 async function loadData() {
   const icon = document.getElementById('reload-icon');
   icon.classList.add('spin-icon');
+  document.getElementById('header-meta').textContent = '⏳ กำลังโหลด…';
 
   try {
-    const res  = await fetch(GAS_URL + '?t=' + Date.now());
-    const text = await res.text();
-    if (text.startsWith('ERROR:')) throw new Error(text);
+    // rows[0] = header array, rows[1..] = data arrays (from doGet JSON)
+    const allRows = await loadViaJsonp(GAS_URL);
 
-    rawRows = parseCSV(text);
+    // แปลง cell เป็น String เพื่อให้ index map ทำงานถูกต้อง
+    rawRows = allRows.slice(1).map(r => r.map(cell => String(cell ?? '')));
+
     populateDropdowns();
     applyFilters();
 
@@ -556,43 +594,11 @@ async function loadData() {
       'ข้อมูล ณ ' + new Date().toLocaleString('th-TH') + '  ·  รวม ' + rawRows.length + ' รายการ';
   } catch(err) {
     console.error(err);
-    document.getElementById('header-meta').textContent = '❌ โหลดข้อมูลล้มเหลว: ' + err.message;
+    document.getElementById('header-meta').textContent = '❌ ' + err.message;
   } finally {
     icon.classList.remove('spin-icon');
     document.getElementById('loading-overlay').classList.add('hidden');
   }
-}
-
-/* ================================================================
-   CSV PARSER  (handles quoted fields)
-================================================================ */
-function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  if (lines.length < 2) return [];
-  // skip header row (index 0)
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    const cols = splitCSVLine(lines[i]);
-    if (cols.length < 14) continue;
-    rows.push(cols);
-  }
-  return rows;
-}
-
-function splitCSVLine(line) {
-  const result = [];
-  let cur = ''; let inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (ch === ',' && !inQ) {
-      result.push(cur.trim()); cur = '';
-    } else { cur += ch; }
-  }
-  result.push(cur.trim());
-  return result;
 }
 
 /* ================================================================
