@@ -516,7 +516,17 @@ tbody td.muted { color: var(--text-muted); }
      Who has access: Anyone
    แล้วคัดลอก URL มาใส่ด้านล่าง
 ================================================================ */
+// ★ GAS Web App URL (New Deployment)
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyQf5ZThIUzWZ6lq8acnykYcKMRBkqpcty5UboER7ExHVQ9saO738LMZdbAKBeNiiY8/exec';
+
+// ★ Fallback: Google Sheets CSV Export URL
+// วิธีได้ URL: File → Share → Publish to web → Sheet: Looker_Normalized → CSV → Publish
+// แล้วนำ URL มาใส่ด้านล่าง (ถ้ายังไม่ได้ตั้งค่า ปล่อยว่างไว้ได้)
+const SHEETS_CSV_URL = '';
+
+// ★ Spreadsheet ID (ใช้สำหรับ Sheets API fallback)
+const SHEET_ID = '1SHRWJwZH9KrtdKzqf3mQ4NKbxO5vdtjr4vv5ohyWuyk';
+const SHEET_NAME = 'Looker_Normalized';
 
 const PENDING   = 'อยู่ระหว่างดำเนินการ';
 const PAGE_SIZE = 20;
@@ -547,7 +557,7 @@ const C = {
 };
 
 /* ================================================================
-   JSONP LOADER — รองรับ GitHub Pages (หลีก CORS ของ GAS redirect)
+   STRATEGY 1: JSONP (GAS Web App)
 ================================================================ */
 function loadViaJsonp(url) {
   return new Promise((resolve, reject) => {
@@ -561,20 +571,16 @@ function loadViaJsonp(url) {
 
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error('Timeout: GAS ไม่ตอบสนองใน 30 วินาที — ตรวจสอบว่า Deploy ถูกต้องและ Sheet มีข้อมูล'));
-    }, 30000);
+      reject(new Error('JSONP timeout'));
+    }, 20000);
 
     window[cbName] = (result) => {
       clearTimeout(timer);
       cleanup();
-      if (result && result.ok) {
+      if (result && result.ok && Array.isArray(result.rows)) {
         resolve(result.rows);
       } else {
-        reject(new Error(
-          result
-            ? 'GAS Error: ' + result.error
-            : 'GAS ตอบกลับผิดรูปแบบ'
-        ));
+        reject(new Error(result ? 'GAS Error: ' + result.error : 'GAS ตอบกลับผิดรูปแบบ'));
       }
     };
 
@@ -582,13 +588,7 @@ function loadViaJsonp(url) {
     script.onerror = () => {
       clearTimeout(timer);
       cleanup();
-      reject(new Error(
-        'โหลด script ล้มเหลว\n' +
-        'สาเหตุที่พบบ่อย:\n' +
-        '• GAS_URL ผิด หรือ Deployment ถูกลบไปแล้ว\n' +
-        '• Deploy ตั้งค่า "Who has access" ไม่ใช่ Anyone\n' +
-        '• ยังไม่ได้สร้าง New Deployment หลังแก้โค้ด'
-      ));
+      reject(new Error('JSONP script load failed'));
     };
 
     document.head.appendChild(script);
@@ -596,25 +596,107 @@ function loadViaJsonp(url) {
 }
 
 /* ================================================================
-   LOAD DATA
+   STRATEGY 2: Google Sheets Published CSV
+   (ต้อง Publish sheet ก่อน: File → Share → Publish to web)
+================================================================ */
+function parseCSV(text) {
+  const lines = [];
+  let cur = '', inQ = false;
+  const chars = text + '\n';
+  let row = [];
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (ch === '"') {
+      if (inQ && chars[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      row.push(cur); cur = '';
+    } else if ((ch === '\n' || ch === '\r') && !inQ) {
+      if (ch === '\r' && chars[i+1] === '\n') i++;
+      row.push(cur); cur = '';
+      if (row.some(c => c !== '')) lines.push(row);
+      row = [];
+    } else {
+      cur += ch;
+    }
+  }
+  return lines;
+}
+
+async function loadViaCSV() {
+  // สร้าง URL สำหรับ export CSV จาก Google Sheets โดยตรง
+  const exportUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
+  const res = await fetch(exportUrl);
+  if (!res.ok) throw new Error('CSV fetch failed: ' + res.status);
+  const text = await res.text();
+  if (!text || text.trim() === '') throw new Error('CSV ว่างเปล่า');
+  // ตรวจสอบว่าได้ HTML (redirect ไป login) แทน CSV
+  if (text.trim().startsWith('<')) throw new Error('Sheet ยังไม่ได้ตั้งเป็น Public — กรุณา Share → Anyone with link can view');
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error('ไม่พบข้อมูลใน sheet');
+  return rows; // rows[0] = headers, rows[1..] = data
+}
+
+/* ================================================================
+   LOAD DATA — ลอง JSONP ก่อน ถ้าล้มเหลวใช้ CSV fallback
 ================================================================ */
 async function loadData() {
-  const icon    = document.getElementById('reload-icon');
-  const errBox  = document.getElementById('error-box');
+  const icon      = document.getElementById('reload-icon');
+  const errBox    = document.getElementById('error-box');
   const errDetail = document.getElementById('error-detail');
 
   icon.classList.add('spin-icon');
   errBox.classList.remove('show');
   document.getElementById('header-meta').textContent = '⏳ กำลังโหลด…';
 
+  let allRows = null;
+  let method  = '';
+  let lastErr = '';
+
+  // ── Strategy 1: JSONP via GAS ──
+  try {
+    console.log('[Dashboard] กำลังลอง JSONP…');
+    allRows = await loadViaJsonp(GAS_URL);
+    method  = 'GAS (JSONP)';
+    console.log('[Dashboard] JSONP สำเร็จ แถว:', allRows.length);
+  } catch (e1) {
+    lastErr = e1.message;
+    console.warn('[Dashboard] JSONP ล้มเหลว:', lastErr);
+
+    // ── Strategy 2: Google Sheets CSV export ──
+    try {
+      console.log('[Dashboard] กำลังลอง CSV fallback…');
+      allRows = await loadViaCSV();
+      method  = 'Sheets CSV';
+      console.log('[Dashboard] CSV สำเร็จ แถว:', allRows.length);
+    } catch (e2) {
+      lastErr = e2.message;
+      console.error('[Dashboard] CSV fallback ล้มเหลว:', lastErr);
+    }
+  }
+
+  if (!allRows) {
+    document.getElementById('header-meta').textContent = '❌ โหลดข้อมูลไม่สำเร็จ';
+    errDetail.innerHTML =
+      '<strong>ลองทุกวิธีแล้วแต่ยังไม่สำเร็จ</strong><br><br>' +
+      'ข้อผิดพลาดล่าสุด: <code>' + lastErr + '</code><br><br>' +
+      '<strong>วิธีแก้:</strong><br>' +
+      '1. ตรวจสอบว่า Spreadsheet ถูก Share เป็น "Anyone with the link can view"<br>' +
+      '2. ตรวจสอบว่า GAS Deployment ตั้ง "Who has access: Anyone"<br>' +
+      '3. ตรวจสอบว่า sheet ชื่อ <code>Looker_Normalized</code> มีข้อมูล (กด Sync ก่อน)';
+    errBox.classList.add('show');
+    document.getElementById('loading-overlay').classList.add('hidden');
+    icon.classList.remove('spin-icon');
+    return;
+  }
+
   try {
     // rows[0] = header row, rows[1..] = data rows
-    const allRows = await loadViaJsonp(GAS_URL);
+    const dataRows = Array.isArray(allRows[0]) ? allRows.slice(1) : allRows.slice(1);
 
-    // แปลง cell ทุกอันเป็น String
-    rawRows = allRows.slice(1).map(r =>
-      r.map(cell => (cell === null || cell === undefined) ? '' : String(cell))
-    );
+    rawRows = dataRows.map(r =>
+      r.map(cell => (cell === null || cell === undefined) ? '' : String(cell).trim())
+    ).filter(r => r[C.job_name] && r[C.job_name] !== '');
 
     if (rawRows.length === 0) throw new Error('ไม่พบข้อมูลใน sheet Looker_Normalized — กรุณากด Sync ก่อน');
 
@@ -623,15 +705,15 @@ async function loadData() {
 
     document.getElementById('header-meta').textContent =
       'ข้อมูล ณ ' + new Date().toLocaleString('th-TH') +
-      '  ·  รวม ' + rawRows.length + ' รายการ';
+      '  ·  รวม ' + rawRows.length + ' รายการ' +
+      '  ·  โหลดผ่าน ' + method;
 
     document.getElementById('loading-overlay').classList.add('hidden');
 
   } catch (err) {
-    console.error('[Dashboard Error]', err);
-    const msg = err.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
+    console.error('[Dashboard] Error processing data:', err);
     document.getElementById('header-meta').textContent = '❌ โหลดข้อมูลไม่สำเร็จ';
-    errDetail.textContent = msg;
+    errDetail.textContent = err.message;
     errBox.classList.add('show');
     document.getElementById('loading-overlay').classList.add('hidden');
   } finally {
