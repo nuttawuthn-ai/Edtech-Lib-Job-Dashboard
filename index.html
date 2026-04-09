@@ -664,9 +664,7 @@ async function loadData() {
     applyFilters();
 
     document.getElementById('header-meta').textContent =
-      'ข้อมูล ณ ' + new Date().toLocaleString('th-TH') +
-      '  ·  รวม ' + rawRows.length + ' รายการ' +
-      '  ·  โหลดผ่าน ' + method;
+      'ข้อมูล ณ ' + new Date().toLocaleString('th-TH');
 
     document.getElementById('loading-overlay').classList.add('hidden');
   } catch (err) {
