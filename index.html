@@ -468,11 +468,11 @@ tbody td.muted { color: var(--text-muted); }
         <option value="ตัดต่อวิดีโอ">🎬 ตัดต่อวิดีโอ</option>
         <option value="ควบคุมโสตทัศนูปกรณ์">🎙️ ควบคุมโสตทัศนูปกรณ์</option>
       </select>
-      <select id="sel-emp-filter" onchange="applyFilters()">
-        <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
-      </select>
       <select id="sel-owner-filter" onchange="applyFilters()">
         <option value="">— เจ้าของงาน ทั้งหมด —</option>
+      </select>
+      <select id="sel-emp-filter" onchange="applyFilters()">
+        <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
       </select>
     </div>
     <div class="table-wrap">
@@ -515,7 +515,7 @@ tbody td.muted { color: var(--text-muted); }
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyQf5ZThIUzWZ6lq8acnykYcKMRBkqpcty5UboER7ExHVQ9saO738LMZdbAKBeNiiY8/exec';
 
 const PENDING   = 'อยู่ระหว่างดำเนินการ';
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 /* ================================================================
    STATE
