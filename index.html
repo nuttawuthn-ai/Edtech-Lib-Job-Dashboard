@@ -649,7 +649,13 @@ async function loadData() {
 
   try {
     rawRows = allRows.slice(1)
-      .map(r => r.map(cell => (cell === null || cell === undefined) ? '' : String(cell).trim()))
+      .map(r => {
+        const row = r.map(cell => (cell === null || cell === undefined) ? '' : String(cell).trim());
+        // Normalize year_month: ตัด "2026-04-01" → "2026-04" (CSV export ส่ง full date)
+        const ym = row[C.year_month];
+        if (ym && /^\d{4}-\d{2}-\d{2}/.test(ym)) row[C.year_month] = ym.slice(0, 7);
+        return row;
+      })
       .filter(r => r[C.job_name] && r[C.job_name] !== '');
 
     if (rawRows.length === 0) throw new Error('ไม่พบข้อมูลใน sheet Looker_Normalized — กรุณากด Sync ก่อน');
