@@ -665,7 +665,7 @@ async function loadData() {
     applyFilters();
 
     document.getElementById('header-meta').textContent =
-      `[${method}] ข้อมูล ณ ` + new Date().toLocaleString('th-TH');
+      'ข้อมูล ณ ' + new Date().toLocaleString('th-TH');
 
     document.getElementById('loading-overlay').classList.add('hidden');
   } catch (err) {
