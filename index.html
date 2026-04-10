@@ -548,30 +548,7 @@ const SHEET_ID   = '1SHRWJwZH9KrtdKzqf3mQ4NKbxO5vdtjr4vv5ohyWuyk';
 const SHEET_NAME = 'Looker_Normalized';
 
 /* ================================================================
-   STRATEGY 1: JSONP (GAS Web App)
-================================================================ */
-function loadViaJsonp(url) {
-  return new Promise((resolve, reject) => {
-    const cbName = '__gasCb_' + Date.now();
-    const script = document.createElement('script');
-    const cleanup = () => {
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    };
-    const timer = setTimeout(() => { cleanup(); reject(new Error('JSONP timeout')); }, 20000);
-    window[cbName] = (result) => {
-      clearTimeout(timer); cleanup();
-      if (result && result.ok && Array.isArray(result.rows)) resolve(result.rows);
-      else reject(new Error(result ? 'GAS Error: ' + result.error : 'GAS ตอบกลับผิดรูปแบบ'));
-    };
-    script.src = url + '?callback=' + cbName + '&t=' + Date.now();
-    script.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('JSONP script load failed')); };
-    document.head.appendChild(script);
-  });
-}
-
-/* ================================================================
-   STRATEGY 2: Google Sheets gviz CSV export
+   CSV PARSER (ใช้ร่วมกันทั้ง GAS และ Sheets fallback)
 ================================================================ */
 function parseCSV(text) {
   const lines = []; let cur = '', inQ = false;
@@ -590,6 +567,24 @@ function parseCSV(text) {
   return lines;
 }
 
+/* ================================================================
+   STRATEGY 1: fetch() ตรงจาก GAS Web App (รองรับ CORS)
+   ✅ แก้ไข: เปลี่ยนจาก JSONP เป็น fetch เพราะ GAS ส่งกลับเป็น CSV
+================================================================ */
+async function loadViaGAS(url) {
+  const res = await fetch(url + '?t=' + Date.now());
+  if (!res.ok) throw new Error('GAS fetch failed: ' + res.status);
+  const text = await res.text();
+  if (!text || text.trim() === '') throw new Error('GAS ส่งข้อมูลว่างเปล่า');
+  if (text.trim().startsWith('<')) throw new Error('GAS ตอบกลับเป็น HTML — ตรวจสอบ Deployment อีกครั้ง');
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error('ไม่พบข้อมูลใน GAS response');
+  return rows;
+}
+
+/* ================================================================
+   STRATEGY 2: Google Sheets gviz CSV export (fallback)
+================================================================ */
 async function loadViaCSV() {
   const exportUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
   const res = await fetch(exportUrl);
@@ -603,7 +598,7 @@ async function loadViaCSV() {
 }
 
 /* ================================================================
-   LOAD DATA — ลอง JSONP ก่อน ถ้าล้มเหลวใช้ CSV fallback
+   LOAD DATA — ลอง GAS fetch ก่อน ถ้าล้มเหลวใช้ CSV fallback
 ================================================================ */
 async function loadData() {
   const icon      = document.getElementById('reload-icon');
@@ -616,17 +611,22 @@ async function loadData() {
 
   let allRows = null, method = '', lastErr = '';
 
+  // Strategy 1: GAS fetch
   try {
-    console.log('[Dashboard] กำลังลอง JSONP…');
-    allRows = await loadViaJsonp(GAS_URL);
-    method  = 'GAS (JSONP)';
+    console.log('[Dashboard] กำลังลอง GAS fetch…');
+    allRows = await loadViaGAS(GAS_URL);
+    method  = 'GAS (fetch)';
+    console.log('[Dashboard] GAS fetch สำเร็จ:', allRows.length, 'rows');
   } catch (e1) {
     lastErr = e1.message;
-    console.warn('[Dashboard] JSONP ล้มเหลว:', lastErr);
+    console.warn('[Dashboard] GAS fetch ล้มเหลว:', lastErr);
+
+    // Strategy 2: CSV fallback
     try {
       console.log('[Dashboard] กำลังลอง CSV fallback…');
       allRows = await loadViaCSV();
       method  = 'Sheets CSV';
+      console.log('[Dashboard] CSV fallback สำเร็จ:', allRows.length, 'rows');
     } catch (e2) {
       lastErr = e2.message;
       console.error('[Dashboard] CSV fallback ล้มเหลว:', lastErr);
@@ -665,7 +665,7 @@ async function loadData() {
     applyFilters();
 
     document.getElementById('header-meta').textContent =
-      'ข้อมูล ณ ' + new Date().toLocaleString('th-TH');
+      `[${method}] ข้อมูล ณ ` + new Date().toLocaleString('th-TH');
 
     document.getElementById('loading-overlay').classList.add('hidden');
   } catch (err) {
@@ -786,13 +786,6 @@ function destroyChart(id) {
   if (charts[id]) { charts[id].destroy(); delete charts[id]; }
 }
 
-const TASK_COLORS = {
-  'ออกแบบสื่อประชาสัมพันธ์': '#6366f1',
-  'ถ่ายภาพ':                  '#06b6d4',
-  'ตัดต่อวิดีโอ':             '#f59e0b',
-  'ควบคุมโสตทัศนูปกรณ์':      '#22c55e',
-};
-
 function chartDefaults() {
   return {
     responsive: true,
@@ -909,7 +902,6 @@ function renderEmpChart(canvasId, taskLabel, color) {
   cfg.scales.y.stacked = true;
   cfg.scales.y.ticks.font = { family: "'IBM Plex Sans Thai', sans-serif", size: 11 };
 
-  // แปลง hex → rgba
   const hexToRgba = (hex, alpha) => {
     const r = parseInt(hex.slice(1,3),16);
     const g = parseInt(hex.slice(3,5),16);
