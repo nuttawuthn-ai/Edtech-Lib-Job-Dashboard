@@ -239,17 +239,20 @@ canvas { max-height: 280px; }
   border-bottom: 1px solid var(--border);
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
 }
-.table-header h3 { font-size: .95rem; font-weight: 700; flex: 1; }
-.table-title-wrap { flex: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.table-title-wrap h3 { flex: 0 0 auto; }
+.table-header h3 { font-size: .95rem; font-weight: 700; margin-right: auto; }
+.table-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .table-count {
   font-size: .78rem; font-weight: 600; color: var(--text-muted);
   background: var(--bg3); border: 1px solid var(--border);
-  padding: 4px 12px; border-radius: 20px; white-space: nowrap;
+  padding: 6px 12px; border-radius: 20px; white-space: nowrap;
 }
 .table-count b { color: var(--accent); font-weight: 700; }
 .table-count .tc-sub { color: var(--text-muted); font-weight: 500; }
-.table-header select { font-size: .8rem; padding: 6px 10px; }
+.table-header select {
+  font-size: .8rem; padding: 6px 10px;
+  width: 172px; max-width: 172px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: .82rem; }
 thead th {
@@ -330,6 +333,9 @@ tbody td.muted { color: var(--text-muted); }
   .chart-grid { grid-template-columns: 1fr; }
   .kpi-grid   { grid-template-columns: repeat(2, 1fr); }
   .filter-bar { flex-direction: column; align-items: flex-start; }
+  .table-header h3 { margin-right: 0; width: 100%; }
+  .table-controls { width: 100%; }
+  .table-controls select { flex: 1 1 140px; width: auto; max-width: none; }
 }
 </style>
 </head>
@@ -470,23 +476,23 @@ tbody td.muted { color: var(--text-muted); }
   <p class="section-title">รายชื่องานทั้งหมด</p>
   <div class="table-card">
     <div class="table-header">
-      <div class="table-title-wrap">
-        <h3>📋 รายชื่องานแยกตามประเภท & ผู้รับผิดชอบ</h3>
+      <h3>📋 รายชื่องานแยกตามประเภท & ผู้รับผิดชอบ</h3>
+      <div class="table-controls">
         <span class="table-count" id="table-count">พบ <b>0</b> รายการ</span>
+        <select id="sel-task-filter" onchange="applyFilters()">
+          <option value="">— ประเภทงาน ทั้งหมด —</option>
+          <option value="ออกแบบสื่อประชาสัมพันธ์">🎨 ออกแบบสื่อประชาสัมพันธ์</option>
+          <option value="ถ่ายภาพ">📷 ถ่ายภาพ</option>
+          <option value="ตัดต่อวิดีโอ">🎬 ตัดต่อวิดีโอ</option>
+          <option value="ควบคุมโสตทัศนูปกรณ์">🎙️ ควบคุมโสตทัศนูปกรณ์</option>
+        </select>
+        <select id="sel-owner-filter" onchange="applyFilters()">
+          <option value="">— เจ้าของงาน ทั้งหมด —</option>
+        </select>
+        <select id="sel-emp-filter" onchange="applyFilters()">
+          <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
+        </select>
       </div>
-      <select id="sel-task-filter" onchange="applyFilters()">
-        <option value="">— ประเภทงาน ทั้งหมด —</option>
-        <option value="ออกแบบสื่อประชาสัมพันธ์">🎨 ออกแบบสื่อประชาสัมพันธ์</option>
-        <option value="ถ่ายภาพ">📷 ถ่ายภาพ</option>
-        <option value="ตัดต่อวิดีโอ">🎬 ตัดต่อวิดีโอ</option>
-        <option value="ควบคุมโสตทัศนูปกรณ์">🎙️ ควบคุมโสตทัศนูปกรณ์</option>
-      </select>
-      <select id="sel-owner-filter" onchange="applyFilters()">
-        <option value="">— เจ้าของงาน ทั้งหมด —</option>
-      </select>
-      <select id="sel-emp-filter" onchange="applyFilters()">
-        <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
-      </select>
     </div>
     <div class="table-wrap">
       <table>
