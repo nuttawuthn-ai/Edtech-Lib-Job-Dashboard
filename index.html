@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard · ฝ่ายเทคโนโลยีการศึกษา</title>
 <link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -266,6 +267,9 @@ tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
 tbody tr:hover { background: var(--bg3); }
 tbody td { padding: 10px 14px; color: var(--text); vertical-align: middle; }
 tbody td.muted { color: var(--text-muted); }
+.date-range { white-space: nowrap; }
+.date-range .dr-arrow { color: var(--text-muted); opacity: .55; margin: 0 6px; }
+.date-range .dr-end { color: var(--green); }
 .no-data { text-align: center; color: var(--text-muted); padding: 32px; }
 
 .badge-status {
@@ -354,7 +358,7 @@ tbody td.muted { color: var(--text-muted); }
       <div class="header-title">📊 Analytics · <span>ฝ่ายเทคโนโลยีการศึกษา</span></div>
       <div class="header-meta" id="header-meta">กำลังโหลด…</div>
     </div>
-    <button class="btn-reload" onclick="loadData()">
+    <button class="btn-reload" onclick="loadData()" aria-label="รีโหลดข้อมูลจากแหล่งข้อมูล">
       <span id="reload-icon">🔄</span> รีโหลดข้อมูล
     </button>
   </div>
@@ -479,17 +483,17 @@ tbody td.muted { color: var(--text-muted); }
       <h3>📋 รายชื่องานแยกตามประเภท & ผู้รับผิดชอบ</h3>
       <div class="table-controls">
         <span class="table-count" id="table-count">พบ <b>0</b> รายการ</span>
-        <select id="sel-task-filter" onchange="applyFilters()">
+        <select id="sel-task-filter" onchange="applyFilters()" aria-label="กรองตามประเภทงาน">
           <option value="">— ประเภทงาน ทั้งหมด —</option>
           <option value="ออกแบบสื่อประชาสัมพันธ์">🎨 ออกแบบสื่อประชาสัมพันธ์</option>
           <option value="ถ่ายภาพ">📷 ถ่ายภาพ</option>
           <option value="ตัดต่อวิดีโอ">🎬 ตัดต่อวิดีโอ</option>
           <option value="ควบคุมโสตทัศนูปกรณ์">🎙️ ควบคุมโสตทัศนูปกรณ์</option>
         </select>
-        <select id="sel-owner-filter" onchange="applyFilters()">
+        <select id="sel-owner-filter" onchange="applyFilters()" aria-label="กรองตามเจ้าของงาน">
           <option value="">— เจ้าของงาน ทั้งหมด —</option>
         </select>
-        <select id="sel-emp-filter" onchange="applyFilters()">
+        <select id="sel-emp-filter" onchange="applyFilters()" aria-label="กรองตามผู้รับผิดชอบ">
           <option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>
         </select>
       </div>
@@ -500,8 +504,7 @@ tbody td.muted { color: var(--text-muted); }
           <tr>
             <th>#</th>
             <th>ชื่องาน</th>
-            <th>วันมอบหมาย</th>
-            <th>วันเสร็จงาน</th>
+            <th>วันมอบหมาย → เสร็จงาน</th>
             <th>เจ้าของงาน</th>
             <th>ประเภท</th>
             <th>ผู้รับผิดชอบ</th>
@@ -544,6 +547,81 @@ let filtered    = [];
 let currentPage = 1;
 let charts      = {};
 let trendFilter = 'all';
+
+/* ================================================================
+   UTILITIES
+================================================================ */
+// ป้องกัน HTML injection / เลย์เอาต์เพี้ยนจากอักขระพิเศษในข้อมูล
+function esc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function escAttr(v) { return esc(v); }
+
+// fetch ที่มี timeout กันหน้าค้างเมื่อปลายทางไม่ตอบ
+async function fetchWithTimeout(url, ms = 10000) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { signal: ctrl.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error(`หมดเวลาเชื่อมต่อ (${ms / 1000}s)`);
+    throw e;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+// แคชข้อมูลล่าสุดไว้ใน localStorage เพื่อกันหน้าว่างเมื่อโหลดสดไม่ได้
+const CACHE_KEY = 'edtech_dash_cache_v1';
+function saveCache(rows, cmap) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), rows, cmap })); } catch (e) {}
+}
+function loadCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    return (c && Array.isArray(c.rows) && c.rows.length) ? c : null;
+  } catch (e) { return null; }
+}
+
+/* ================================================================
+   COLUMN MAP — จับคู่จากชื่อหัวคอลัมน์ (ทนต่อการสลับ/แทรกคอลัมน์)
+   ถ้าหาไม่เจอจะใช้ index เดิมเป็น fallback
+================================================================ */
+const HEADER_ALIASES = {
+  job_id:      ['job_id', 'id', 'รหัสงาน'],
+  job_name:    ['job_name', 'ชื่องาน'],
+  owner:       ['owner', 'เจ้าของงาน'],
+  assign_date: ['assign_date', 'วันมอบหมาย', 'วันมอบหมายงาน'],
+  request_date:['request_date', 'วันเสร็จงาน', 'วันเสร็จ'],
+  job_type:    ['job_type', 'ประเภทงานดิบ'],
+  status:      ['status', 'สถานะ'],
+  target_group:['target_group', 'กลุ่มเป้าหมาย'],
+  news_category:['news_category', 'หมวดข่าว', 'ประเภทข่าว'],
+  year:        ['year', 'ปี'],
+  month:       ['month', 'เดือน'],
+  year_month:  ['year_month', 'yearmonth', 'ปีเดือน'],
+  employee:    ['employee', 'ผู้รับผิดชอบ'],
+  task_label:  ['task_label', 'ประเภทงาน'],
+  is_design:   ['is_design'], is_photo: ['is_photo'],
+  is_video:    ['is_video'],  is_av:    ['is_av'],
+  days_open:   ['days_open', 'วันที่ใช้', 'จำนวนวัน'],
+  aging_bucket:['aging_bucket'],
+};
+function buildColumnMap(headerRow) {
+  if (!headerRow || !headerRow.length) return;
+  const norm = headerRow.map(h => String(h || '').trim().toLowerCase());
+  const used = new Set();
+  Object.keys(HEADER_ALIASES).forEach(key => {
+    for (const alias of HEADER_ALIASES[key]) {
+      const idx = norm.indexOf(alias.toLowerCase());
+      if (idx !== -1 && !used.has(idx)) { C[key] = idx; used.add(idx); return; }
+    }
+    // ไม่พบ header ที่ตรง → คงค่า index เดิมไว้ (fallback)
+  });
+}
 
 /* ================================================================
    COLUMN INDEX MAP  (ต้องตรงกับ code.gs headers)
@@ -590,7 +668,7 @@ function parseCSV(text) {
    ✅ แก้ไข: เปลี่ยนจาก JSONP เป็น fetch เพราะ GAS ส่งกลับเป็น CSV
 ================================================================ */
 async function loadViaGAS(url) {
-  const res = await fetch(url + '?t=' + Date.now());
+  const res = await fetchWithTimeout(url + '?t=' + Date.now());
   if (!res.ok) throw new Error('GAS fetch failed: ' + res.status);
   const text = await res.text();
   if (!text || text.trim() === '') throw new Error('GAS ส่งข้อมูลว่างเปล่า');
@@ -605,7 +683,7 @@ async function loadViaGAS(url) {
 ================================================================ */
 async function loadViaCSV() {
   const exportUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
-  const res = await fetch(exportUrl);
+  const res = await fetchWithTimeout(exportUrl);
   if (!res.ok) throw new Error('CSV fetch failed: ' + res.status);
   const text = await res.text();
   if (!text || text.trim() === '') throw new Error('CSV ว่างเปล่า');
@@ -651,50 +729,69 @@ async function loadData() {
     }
   }
 
-  if (!allRows) {
-    document.getElementById('header-meta').textContent = '❌ โหลดข้อมูลไม่สำเร็จ';
-    errDetail.innerHTML =
-      '<strong>ลองทุกวิธีแล้วแต่ยังไม่สำเร็จ</strong><br><br>' +
-      'ข้อผิดพลาดล่าสุด: <code>' + lastErr + '</code><br><br>' +
-      '<strong>วิธีแก้:</strong><br>' +
-      '1. ตรวจสอบว่า Spreadsheet Share เป็น "Anyone with the link can view"<br>' +
-      '2. ตรวจสอบว่า GAS Deployment ตั้ง "Who has access: Anyone"<br>' +
-      '3. ตรวจสอบว่า sheet ชื่อ <code>Looker_Normalized</code> มีข้อมูล';
-    errBox.classList.add('show');
-    document.getElementById('loading-overlay').classList.add('hidden');
-    icon.classList.remove('spin-icon');
+  // ---- ประมวลผลข้อมูลสด (ถ้าโหลดได้) ----
+  if (allRows) {
+    try {
+      buildColumnMap(allRows[0]);   // จับคู่คอลัมน์จากหัวตารางจริง
+      const processed = allRows.slice(1)
+        .map(r => {
+          const row = r.map(cell => (cell === null || cell === undefined) ? '' : String(cell).trim());
+          const ym = row[C.year_month];
+          if (ym && /^\d{4}-\d{2}-\d{2}/.test(ym)) row[C.year_month] = ym.slice(0, 7);
+          return row;
+        })
+        .filter(r => r[C.job_name] && r[C.job_name] !== '');
+
+      if (processed.length === 0)
+        throw new Error('ไม่พบข้อมูลใน sheet Looker_Normalized — กรุณากด Sync ก่อน');
+
+      rawRows = processed;
+      saveCache(rawRows, C);          // เก็บลงแคชไว้ใช้ยามออฟไลน์
+      renderLoaded('ข้อมูล ณ ' + new Date().toLocaleString('th-TH') + ' · ' + method);
+      return;
+    } catch (err) {
+      console.error('[Dashboard] Error processing data:', err);
+      lastErr = err.message;
+    }
+  }
+
+  // ---- โหลดสดไม่ได้ → ลองใช้ข้อมูลแคชล่าสุดแทนหน้าว่าง ----
+  const cached = loadCache();
+  if (cached) {
+    console.warn('[Dashboard] ใช้ข้อมูลจากแคช (' + new Date(cached.t).toLocaleString('th-TH') + ')');
+    if (cached.cmap) Object.assign(C, cached.cmap);
+    rawRows = cached.rows;
+    renderLoaded('⚠️ แสดงข้อมูลที่บันทึกไว้ล่าสุด — ' +
+      new Date(cached.t).toLocaleString('th-TH') + ' (เชื่อมต่อแหล่งข้อมูลไม่ได้)');
     return;
   }
 
-  try {
-    rawRows = allRows.slice(1)
-      .map(r => {
-        const row = r.map(cell => (cell === null || cell === undefined) ? '' : String(cell).trim());
-        // Normalize year_month: ตัด "2026-04-01" → "2026-04" (CSV export ส่ง full date)
-        const ym = row[C.year_month];
-        if (ym && /^\d{4}-\d{2}-\d{2}/.test(ym)) row[C.year_month] = ym.slice(0, 7);
-        return row;
-      })
-      .filter(r => r[C.job_name] && r[C.job_name] !== '');
+  // ---- ไม่มีทั้งข้อมูลสดและแคช → แสดงกล่องข้อผิดพลาด ----
+  document.getElementById('header-meta').textContent = '❌ โหลดข้อมูลไม่สำเร็จ';
+  errDetail.innerHTML =
+    '<strong>ลองทุกวิธีแล้วแต่ยังไม่สำเร็จ และไม่มีข้อมูลสำรองในเครื่อง</strong><br><br>' +
+    'ข้อผิดพลาดล่าสุด: <code>' + esc(lastErr) + '</code><br><br>' +
+    '<strong>วิธีแก้:</strong><br>' +
+    '1. ตรวจสอบว่า Spreadsheet Share เป็น "Anyone with the link can view"<br>' +
+    '2. ตรวจสอบว่า GAS Deployment ตั้ง "Who has access: Anyone"<br>' +
+    '3. ตรวจสอบว่า sheet ชื่อ <code>Looker_Normalized</code> มีข้อมูล';
+  errBox.classList.add('show');
+  document.getElementById('loading-overlay').classList.add('hidden');
+  icon.classList.remove('spin-icon');
+}
 
-    if (rawRows.length === 0) throw new Error('ไม่พบข้อมูลใน sheet Looker_Normalized — กรุณากด Sync ก่อน');
-
-    populateDropdowns();
-    applyFilters();
-
-    document.getElementById('header-meta').textContent =
-      'ข้อมูล ณ ' + new Date().toLocaleString('th-TH');
-
-    document.getElementById('loading-overlay').classList.add('hidden');
-  } catch (err) {
-    console.error('[Dashboard] Error processing data:', err);
-    document.getElementById('header-meta').textContent = '❌ โหลดข้อมูลไม่สำเร็จ';
-    errDetail.textContent = err.message;
-    errBox.classList.add('show');
-    document.getElementById('loading-overlay').classList.add('hidden');
-  } finally {
-    icon.classList.remove('spin-icon');
-  }
+/* ================================================================
+   RENDER หลังโหลดข้อมูล (ใช้ร่วมทั้งข้อมูลสดและแคช)
+================================================================ */
+function renderLoaded(metaText) {
+  const icon   = document.getElementById('reload-icon');
+  const errBox = document.getElementById('error-box');
+  errBox.classList.remove('show');
+  populateDropdowns();
+  applyFilters();
+  document.getElementById('header-meta').textContent = metaText;
+  document.getElementById('loading-overlay').classList.add('hidden');
+  icon.classList.remove('spin-icon');
 }
 
 /* ================================================================
@@ -708,16 +805,16 @@ function populateDropdowns() {
 
   const selYear  = document.getElementById('sel-year');
   const selMonth = document.getElementById('sel-month');
-  selYear.innerHTML  = years.map(y  => `<option value="${y}">${y}</option>`).join('');
-  selMonth.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+  selYear.innerHTML  = years.map(y  => `<option value="${escAttr(y)}">${esc(y)}</option>`).join('');
+  selMonth.innerHTML = months.map(m => `<option value="${escAttr(m)}">${esc(m)}</option>`).join('');
 
   const selEmp = document.getElementById('sel-emp-filter');
   selEmp.innerHTML = '<option value="">— ผู้รับผิดชอบ ทั้งหมด —</option>' +
-    employees.map(e => `<option value="${e}">${e}</option>`).join('');
+    employees.map(e => `<option value="${escAttr(e)}">${esc(e)}</option>`).join('');
 
   const selOwner = document.getElementById('sel-owner-filter');
   selOwner.innerHTML = '<option value="">— เจ้าของงาน ทั้งหมด —</option>' +
-    owners.map(o => `<option value="${o}">${o}</option>`).join('');
+    owners.map(o => `<option value="${escAttr(o)}">${esc(o)}</option>`).join('');
 
   buildTrendTabs();
 }
@@ -790,11 +887,11 @@ function updateKPIs() {
     else if (l === 'ตัดต่อวิดีโอ')             video++;
     else if (l === 'ควบคุมโสตทัศนูปกรณ์')      av++;
   });
-  document.getElementById('kpi-design').textContent = design;
-  document.getElementById('kpi-photo').textContent  = photo;
-  document.getElementById('kpi-video').textContent  = video;
-  document.getElementById('kpi-av').textContent     = av;
-  document.getElementById('kpi-total').textContent  = design + photo + video + av;
+  document.getElementById('kpi-design').textContent = design.toLocaleString();
+  document.getElementById('kpi-photo').textContent  = photo.toLocaleString();
+  document.getElementById('kpi-video').textContent  = video.toLocaleString();
+  document.getElementById('kpi-av').textContent     = av.toLocaleString();
+  document.getElementById('kpi-total').textContent  = (design + photo + video + av).toLocaleString();
 }
 
 /* ================================================================
@@ -951,15 +1048,15 @@ function taskBadge(label) {
     'ควบคุมโสตทัศนูปกรณ์':      ['av',     '🎙️'],
   };
   const [cls, icon] = map[label] || ['other', '📎'];
-  return `<span class="badge-task ${cls}">${icon} ${label}</span>`;
+  return `<span class="badge-task ${cls}">${icon} ${esc(label) || '—'}</span>`;
 }
 
 function statusBadge(st) {
   if (st === PENDING)
-    return `<span class="badge-status pending">🕐 ${st}</span>`;
+    return `<span class="badge-status pending">🕐 ${esc(st)}</span>`;
   if (st === 'ยกเลิก')
-    return `<span class="badge-status" style="background:rgba(239,68,68,.15);color:#f87171;">❌ ${st}</span>`;
-  return `<span class="badge-status done">✅ ${st || 'ดำเนินการแล้ว'}</span>`;
+    return `<span class="badge-status" style="background:rgba(239,68,68,.15);color:#f87171;">❌ ${esc(st)}</span>`;
+  return `<span class="badge-status done">✅ ${esc(st) || 'ดำเนินการแล้ว'}</span>`;
 }
 
 function renderTable() {
@@ -969,21 +1066,27 @@ function renderTable() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
 
   if (page.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="no-data">ไม่พบข้อมูลที่ตรงเงื่อนไข</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="no-data">ไม่พบข้อมูลที่ตรงเงื่อนไข</td></tr>`;
   } else {
-    tbody.innerHTML = page.map((r, i) => `
+    tbody.innerHTML = page.map((r, i) => {
+      const assign = r[C.assign_date]  || '—';
+      const done   = r[C.request_date] || '—';
+      return `
       <tr>
         <td class="muted">${start + i + 1}</td>
-        <td>${r[C.job_name]     || '—'}</td>
-        <td class="muted">${r[C.assign_date]  || '—'}</td>
-        <td class="muted">${r[C.request_date] || '—'}</td>
-        <td>${r[C.owner]        || '—'}</td>
+        <td>${esc(r[C.job_name]) || '—'}</td>
+        <td class="muted date-range">
+          <span class="dr-start">${esc(assign)}</span>
+          <span class="dr-arrow">→</span>
+          <span class="dr-end">${esc(done)}</span>
+        </td>
+        <td>${esc(r[C.owner]) || '—'}</td>
         <td>${taskBadge(r[C.task_label])}</td>
-        <td>${r[C.employee]     || '—'}</td>
+        <td>${esc(r[C.employee]) || '—'}</td>
         <td>${statusBadge(r[C.status])}</td>
-        <td class="muted">${r[C.days_open] !== '' ? r[C.days_open] + ' วัน' : '—'}</td>
-      </tr>
-    `).join('');
+        <td class="muted">${r[C.days_open] !== '' ? esc(r[C.days_open]) + ' วัน' : '—'}</td>
+      </tr>`;
+    }).join('');
   }
 
   // อัปเดตจำนวนข้อมูลหลังกรอง + ช่วงรายการที่กำลังแสดง
