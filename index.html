@@ -240,6 +240,15 @@ canvas { max-height: 280px; }
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
 }
 .table-header h3 { font-size: .95rem; font-weight: 700; flex: 1; }
+.table-title-wrap { flex: 1; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.table-title-wrap h3 { flex: 0 0 auto; }
+.table-count {
+  font-size: .78rem; font-weight: 600; color: var(--text-muted);
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 4px 12px; border-radius: 20px; white-space: nowrap;
+}
+.table-count b { color: var(--accent); font-weight: 700; }
+.table-count .tc-sub { color: var(--text-muted); font-weight: 500; }
 .table-header select { font-size: .8rem; padding: 6px 10px; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: .82rem; }
@@ -461,7 +470,10 @@ tbody td.muted { color: var(--text-muted); }
   <p class="section-title">รายชื่องานทั้งหมด</p>
   <div class="table-card">
     <div class="table-header">
-      <h3>📋 รายชื่องานแยกตามประเภท & ผู้รับผิดชอบ</h3>
+      <div class="table-title-wrap">
+        <h3>📋 รายชื่องานแยกตามประเภท & ผู้รับผิดชอบ</h3>
+        <span class="table-count" id="table-count">พบ <b>0</b> รายการ</span>
+      </div>
       <select id="sel-task-filter" onchange="applyFilters()">
         <option value="">— ประเภทงาน ทั้งหมด —</option>
         <option value="ออกแบบสื่อประชาสัมพันธ์">🎨 ออกแบบสื่อประชาสัมพันธ์</option>
@@ -966,6 +978,19 @@ function renderTable() {
         <td class="muted">${r[C.days_open] !== '' ? r[C.days_open] + ' วัน' : '—'}</td>
       </tr>
     `).join('');
+  }
+
+  // อัปเดตจำนวนข้อมูลหลังกรอง + ช่วงรายการที่กำลังแสดง
+  const totalCount = filtered.length;
+  const countEl = document.getElementById('table-count');
+  if (totalCount === 0) {
+    countEl.innerHTML = `พบ <b>0</b> รายการ`;
+  } else {
+    const from = start + 1;
+    const to   = Math.min(start + PAGE_SIZE, totalCount);
+    countEl.innerHTML =
+      `พบ <b>${totalCount.toLocaleString()}</b> รายการ ` +
+      `<span class="tc-sub">(แสดง ${from.toLocaleString()}–${to.toLocaleString()})</span>`;
   }
 
   document.getElementById('pg-info').textContent = `หน้า ${currentPage} / ${totalPages}`;
