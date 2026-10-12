@@ -411,6 +411,16 @@ tbody td.muted { color: var(--text-muted); }
         <label class="chk-label"><input type="checkbox" id="chk-pending" checked onchange="applyFilters()">🕐 อยู่ระหว่างดำเนินการ</label>
       </div>
     </div>
+
+    <!-- ฝ่ายเจ้าของงาน (แสดงเมื่อข้อมูลมีคอลัมน์ owner_dept) -->
+    <div class="filter-group" id="dept-group" style="display:none">
+      <span class="filter-label">🏢 ฝ่ายเจ้าของงาน</span>
+      <div class="filter-row">
+        <select id="sel-dept" onchange="applyFilters()" aria-label="กรองตามฝ่ายเจ้าของงาน">
+          <option value="">ทุกฝ่าย</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <!-- KPI Cards -->
@@ -609,6 +619,7 @@ const HEADER_ALIASES = {
   is_video:    ['is_video'],  is_av:    ['is_av'],
   days_open:   ['days_open', 'วันที่ใช้', 'จำนวนวัน'],
   aging_bucket:['aging_bucket'],
+  owner_dept:  ['owner_dept', 'ฝ่ายเจ้าของงาน'],
 };
 function buildColumnMap(headerRow) {
   if (!headerRow || !headerRow.length) return;
@@ -636,7 +647,7 @@ const C = {
   job_type:5, status:6, target_group:7, news_category:8,
   year:9, month:10, year_month:11, employee:12, task_label:13,
   is_design:14, is_photo:15, is_video:16, is_av:17,
-  days_open:18, aging_bucket:19
+  days_open:18, aging_bucket:19, owner_dept:20
 };
 
 // Spreadsheet ID สำหรับ CSV fallback
@@ -816,6 +827,16 @@ function populateDropdowns() {
   selOwner.innerHTML = '<option value="">— เจ้าของงาน ทั้งหมด —</option>' +
     owners.map(o => `<option value="${escAttr(o)}">${esc(o)}</option>`).join('');
 
+  // ฝ่ายเจ้าของงาน
+  const depts = [...new Set(rawRows.map(r => r[C.owner_dept]).filter(Boolean))]
+    .sort((a, b) => (a === 'ไม่ระบุฝ่าย') - (b === 'ไม่ระบุฝ่าย') || a.localeCompare(b, 'th'));
+  const selDept  = document.getElementById('sel-dept');
+  const prevDept = selDept.value;
+  selDept.innerHTML = '<option value="">ทุกฝ่าย</option>' +
+    depts.map(d => `<option value="${escAttr(d)}">${esc(d)}</option>`).join('');
+  selDept.value = depts.includes(prevDept) ? prevDept : '';
+  document.getElementById('dept-group').style.display = depts.length ? '' : 'none';
+
   buildTrendTabs();
 }
 
@@ -843,6 +864,7 @@ function applyFilters() {
   const taskFilter  = document.getElementById('sel-task-filter').value;
   const empFilter   = document.getElementById('sel-emp-filter').value;
   const ownerFilter = document.getElementById('sel-owner-filter').value;
+  const deptFilter  = document.getElementById('sel-dept').value;
 
   const taskMap = {
     'ออกแบบสื่อประชาสัมพันธ์': showDesign,
@@ -865,6 +887,7 @@ function applyFilters() {
     if (taskFilter  && label         !== taskFilter)  return false;
     if (empFilter   && r[C.employee] !== empFilter)   return false;
     if (ownerFilter && r[C.owner]    !== ownerFilter) return false;
+    if (deptFilter  && r[C.owner_dept] !== deptFilter) return false;
 
     return true;
   });
