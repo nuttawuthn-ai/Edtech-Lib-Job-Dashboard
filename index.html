@@ -469,6 +469,18 @@ tbody td.muted { color: var(--text-muted); }
     </div>
   </div>
 
+  <!-- Charts: งานแยกตามฝ่ายเจ้าของงาน (แสดงเมื่อมี owner_dept) -->
+  <div id="dept-section" style="display:none">
+    <p class="section-title">งานแยกตามฝ่ายเจ้าของงาน</p>
+    <div class="chart-card" style="margin-bottom:24px">
+      <div class="chart-title" style="justify-content:space-between;flex-wrap:wrap">
+        <span>🏢 จำนวนผลงานแยกตามฝ่าย</span>
+        <span style="font-size:.75rem;font-weight:400;color:#64748b">คลิกแท่งเพื่อกรองทั้งหน้าตามฝ่าย</span>
+      </div>
+      <div id="dept-chart-wrap" style="position:relative;height:320px"><canvas id="chartDept" style="max-height:none"></canvas></div>
+    </div>
+  </div>
+
   <!-- Charts Row 2: Per-person -->
   <p class="section-title">ภาระงานรายบุคคล</p>
   <div class="chart-grid">
@@ -554,6 +566,7 @@ const PAGE_SIZE = 10;
 ================================================================ */
 let rawRows     = [];
 let filtered    = [];
+let filteredNoDept = [];   // ผ่านทุกตัวกรองยกเว้นฝ่าย (ใช้กับกราฟแยกตามฝ่าย)
 let currentPage = 1;
 let charts      = {};
 let trendFilter = 'all';
@@ -873,6 +886,7 @@ function applyFilters() {
     'ควบคุมโสตทัศนูปกรณ์':      showAv,
   };
 
+  filteredNoDept = [];
   filtered = rawRows.filter(r => {
     if (mode === 'year'  && r[C.year]       !== yearVal)  return false;
     if (mode === 'month' && r[C.year_month] !== monthVal) return false;
@@ -887,6 +901,7 @@ function applyFilters() {
     if (taskFilter  && label         !== taskFilter)  return false;
     if (empFilter   && r[C.employee] !== empFilter)   return false;
     if (ownerFilter && r[C.owner]    !== ownerFilter) return false;
+    filteredNoDept.push(r);
     if (deptFilter  && r[C.owner_dept] !== deptFilter) return false;
 
     return true;
@@ -970,6 +985,79 @@ function updateCharts() {
   renderEmpChart('chartDesignEmp', 'ออกแบบสื่อประชาสัมพันธ์', '#6366f1');
   renderEmpChart('chartVideoEmp',  'ตัดต่อวิดีโอ',             '#f59e0b');
   renderEmpChart('chartPhotoEmp',  'ถ่ายภาพ',                  '#06b6d4');
+  renderDeptChart();
+}
+
+/* ================================================================
+   กราฟผลงานแยกตามฝ่ายเจ้าของงาน
+   ใช้ข้อมูลที่ผ่านทุกตัวกรองยกเว้นฝ่าย แล้วไฮไลต์ฝ่ายที่เลือก
+================================================================ */
+function renderDeptChart() {
+  const section = document.getElementById('dept-section');
+  const hasDept = rawRows.some(r => r[C.owner_dept]);
+  section.style.display = hasDept ? '' : 'none';
+  destroyChart('chartDept');
+  if (!hasDept) return;
+
+  const TYPES = [
+    { label: 'ออกแบบสื่อประชาสัมพันธ์', short: 'ออกแบบสื่อ',   color: '99,102,241' },
+    { label: 'ถ่ายภาพ',                 short: 'ถ่ายภาพ',      color: '6,182,212'  },
+    { label: 'ตัดต่อวิดีโอ',            short: 'ตัดต่อวิดีโอ', color: '245,158,11' },
+    { label: 'ควบคุมโสตทัศนูปกรณ์',     short: 'ควบคุมโสตฯ',   color: '34,197,94'  },
+  ];
+  const agg = {};
+  filteredNoDept.forEach(r => {
+    const d = r[C.owner_dept];
+    if (!d) return;
+    const a = agg[d] = agg[d] || { total: 0 };
+    a.total++;
+    a[r[C.task_label]] = (a[r[C.task_label]] || 0) + 1;
+  });
+  const depts = Object.keys(agg).sort((x, y) =>
+    (x === 'ไม่ระบุฝ่าย') - (y === 'ไม่ระบุฝ่าย') || agg[y].total - agg[x].total);
+
+  const sel = document.getElementById('sel-dept').value;
+  const alpha = d => (sel && d !== sel) ? 0.15 : 0.75;
+
+  const cfg = chartDefaults();
+  cfg.indexAxis = 'y';
+  cfg.maintainAspectRatio = false;
+  cfg.scales.x.stacked = true;
+  cfg.scales.y.stacked = true;
+  cfg.scales.y.grid = { display: false };
+  cfg.scales.y.ticks = { color: '#cbd5e1', font: { family: "'IBM Plex Sans Thai', sans-serif", size: 12 } };
+  cfg.plugins.tooltip.callbacks = {
+    title:  items => depts[items[0].dataIndex],
+    footer: items => 'รวม ' + agg[depts[items[0].dataIndex]].total.toLocaleString() + ' ผลงาน',
+  };
+  // legend ใช้สีเต็มเสมอ (สีแท่งแรกอาจจางเมื่อเลือกฝ่ายอื่น)
+  cfg.plugins.legend.labels.generateLabels = chart => chart.data.datasets.map((ds, i) => ({
+    text: ds.label, fillStyle: `rgba(${TYPES[i].color},.75)`, strokeStyle: 'transparent',
+    fontColor: '#94a3b8', datasetIndex: i, hidden: !chart.isDatasetVisible(i),
+  }));
+  cfg.onHover = (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; };
+  cfg.onClick = (e, els) => {
+    if (!els.length) return;
+    const d = depts[els[0].index];
+    const selDept = document.getElementById('sel-dept');
+    selDept.value = (selDept.value === d) ? '' : d;
+    applyFilters();
+  };
+
+  document.getElementById('dept-chart-wrap').style.height = Math.max(160, depts.length * 40 + 70) + 'px';
+  charts['chartDept'] = new Chart(document.getElementById('chartDept'), {
+    type: 'bar',
+    data: {
+      labels: depts.map(d => `${d}  (${agg[d].total.toLocaleString()})`),
+      datasets: TYPES.map(t => ({
+        label: t.short,
+        data: depts.map(d => agg[d][t.label] || 0),
+        backgroundColor: depts.map(d => `rgba(${t.color},${alpha(d)})`),
+        borderRadius: 4, maxBarThickness: 26,
+      })),
+    },
+    options: cfg,
+  });
 }
 
 function renderStatusBars() {
